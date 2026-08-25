@@ -13,7 +13,7 @@
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.0",
     "@phosphor-icons/react": "^2.1.7",
-    "@supabase/ssr": "^0.5.2",
+    "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.47.10",
     "ai": "^6.0.0",
     "date-fns": "^3.6.0",

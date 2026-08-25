@@ -1,6 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import type { AgentToolContext } from "./context";
+import type { Database } from "@/lib/database.types";
 
 export function createSaveContactInfoTool(ctx: AgentToolContext) {
   return tool({
@@ -19,7 +20,13 @@ export function createSaveContactInfoTool(ctx: AgentToolContext) {
         return { success: true, sandbox: true, saved: { full_name, is_new_patient } };
       }
 
-      const update: Record<string, string | boolean> = {};
+      // Tipado contra el `Update` real de la tabla (en vez de un `Record`
+      // generico) para que supabase-js pueda validar el objeto contra el
+      // esquema en vez de rechazarlo por tener una index signature generica.
+      const update: Pick<
+        Database["public"]["Tables"]["contacts"]["Update"],
+        "full_name" | "is_new_patient"
+      > = {};
       if (full_name !== undefined) update.full_name = full_name;
       if (is_new_patient !== undefined) update.is_new_patient = is_new_patient;
 
