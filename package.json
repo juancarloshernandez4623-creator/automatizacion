@@ -1,0 +1,43 @@
+{
+  "name": "whatsapp-clinica",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Plataforma multi-tenant de atencion al cliente por WhatsApp con agente de IA (Next.js 16 + Supabase + Vercel AI SDK 6 + Claude Sonnet 4.6).",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^2.0.0",
+    "@phosphor-icons/react": "^2.1.7",
+    "@supabase/ssr": "^0.5.2",
+    "@supabase/supabase-js": "^2.47.10",
+    "ai": "^6.0.0",
+    "date-fns": "^3.6.0",
+    "date-fns-tz": "^3.2.0",
+    "googleapis": "^144.0.0",
+    "next": "16.2.6",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "twilio": "^6.1.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.2.0",
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "eslint": "^9.17.0",
+    "eslint-config-next": "16.2.6",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20.9.0"
+  }
+}
