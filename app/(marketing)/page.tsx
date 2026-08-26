@@ -7,10 +7,13 @@ import {
   InstagramLogo,
   LinkedinLogo,
   Phone,
+  Question,
   Quotes,
   Robot,
+  X,
 } from "@phosphor-icons/react/dist/ssr";
 import { Logo, LogoMark } from "@/components/brand/logo";
+import { FaqAccordion } from "./faq-accordion";
 
 // Numero de contacto unico de Recepta: alimenta el link "Hablemos" del nav,
 // el CTA de precios y el pie de pagina -- un solo cambio aqui se propaga a
@@ -41,22 +44,44 @@ const STATS = [
   { value: "0", label: "mensajes de WhatsApp sin contestar" },
 ];
 
-// Secuencia real de 3 pasos (por eso lleva numeracion) -- distinto de
-// FEATURES, que son capacidades en paralelo, no un orden.
-const STEPS = [
+// Seccion de "agitacion del problema": por que un WhatsApp sin responder
+// cuesta clientes, y por que la personalizacion (no un bot generico) es la
+// respuesta. El numero grande es solo un indice visual para escanear rapido
+// -- no implica que sean pasos en orden (por eso va muy translucido, no
+// como una cifra "importante" tipo las de STATS).
+const REASONS = [
   {
-    title: "Conecta tus cuentas",
-    body: "WhatsApp Business y Google Calendar, en unos minutos, sin tocar código.",
+    n: "1",
+    title: "Un mensaje sin respuesta no espera",
+    body: "Quien no recibe respuesta en minutos le escribe al siguiente negocio de la lista. No deja recado ni vuelve mañana: sigue de largo. Cada mensaje sin contestar es, en ese mismo minuto, un cliente hablando con la competencia.",
   },
   {
-    title: "Dale tu voz al agente",
-    body: "Servicios, horarios y tono de tu negocio — Recepta responde como tú lo harías.",
+    n: "2",
+    title: "No es un bot genérico, es tu negocio hablando",
+    body: "Recepta se personaliza al máximo: conoce tus servicios, tus precios, tu tono y tus reglas. Responde como tú lo harías — y cuando algo se sale de lo que sabe, te pasa la conversación con el contexto ya resuelto.",
   },
   {
-    title: "Recepta atiende por ti",
-    body: "Cada mensaje se responde y cada cita se agenda sola; tú lo ves todo desde el panel.",
+    n: "3",
+    title: "Atiende también cuando tú no puedes",
+    body: "Fuera de horario, el fin de semana, en medio de una cita con otro cliente. El WhatsApp suena y alguien responde, sin importar la hora.",
+  },
+  {
+    n: "4",
+    title: "Se adapta a cómo trabajas, no al revés",
+    body: "Se conecta a tu calendario, aprende tus servicios y sigue tus propias reglas sobre cuándo pasarte una conversación. No cambias tu forma de trabajar ni aprendes un programa nuevo.",
   },
 ];
+
+// Diagrama "con Recepta" vs "sin gestionar" -- los pasos intermedios de cada
+// camino, mas un nodo final distinto (check / interrogante) que se renderiza
+// aparte para no repetir el resultado dentro de la lista de pasos.
+const FLOW_WITH_STEPS = ["Mensaje recibido", "Responde al instante", "Duda resuelta"] as const;
+const FLOW_WITHOUT_STEPS = [
+  "Mensaje recibido",
+  "Sigue sin leer",
+  "El cliente espera",
+  "Escribe a otro negocio",
+] as const;
 
 const FEATURES = [
   {
@@ -75,6 +100,51 @@ const FEATURES = [
     body: "Toma el control de cualquier conversación en un clic; el agente se queda en silencio hasta que lo reactives.",
   },
 ];
+
+// En vez de una foto de una persona (no tenemos recepcionistas reales que
+// fotografiar, y una imagen de stock presentada como "nuestro equipo" seria
+// enganosa) mostramos, tal cual, que datos configura el agente -- es una
+// prueba mas honesta y mas relevante de "personalizacion maxima" que un
+// retrato generico.
+const BUSINESS_PROFILE_FACTS = [
+  "Servicios y precios exactos de tu negocio",
+  "Horario real, con tus excepciones y días cerrados",
+  "Tono y estilo con el que ya le hablas a tus clientes",
+  "Reglas claras de cuándo pasarte la conversación a ti",
+];
+
+const COMPARISON_ROWS = [
+  {
+    label: "Responde fuera de horario",
+    recepta: true,
+    sinGestionar: false,
+    personaContratada: false,
+  },
+  {
+    label: "Agenda la cita en la misma conversación",
+    recepta: true,
+    sinGestionar: false,
+    personaContratada: true,
+  },
+  {
+    label: "Sin turnos ni bajas que cubrir",
+    recepta: true,
+    sinGestionar: true,
+    personaContratada: false,
+  },
+  {
+    label: "Absorbe picos de mensajes sin aviso previo",
+    recepta: true,
+    sinGestionar: false,
+    personaContratada: false,
+  },
+  {
+    label: "Deja registro escrito de cada conversación",
+    recepta: true,
+    sinGestionar: "a veces",
+    personaContratada: "a veces",
+  },
+] as const;
 
 const PRICING = [
   {
@@ -112,6 +182,85 @@ const PRICING = [
 // cuanto se tenga.
 const TESTIMONIAL_PLACEHOLDERS = [1, 2, 3];
 
+// Fila de una celda de la tabla comparativa: true/false se dibujan como
+// icono, "a veces" se deja como texto -- evita forzar un tercer icono para
+// un caso que en realidad es ambiguo.
+function ComparisonCell({ value }: { value: boolean | "a veces" }) {
+  if (value === true) {
+    return <CheckCircle className="mx-auto text-brand-400" size={20} weight="fill" />;
+  }
+  if (value === false) {
+    return <X className="mx-auto text-ink-500" size={16} />;
+  }
+  return <span className="text-xs text-ink-500">{value}</span>;
+}
+
+// Un camino del diagrama "que cambia cuando Recepta atiende". `active`
+// controla el estilo (verde marca y protagonismo vs. gris apagado) y que
+// icono de cierre se dibuja -- no hay logica distinta mas alla de eso.
+function FlowPath({
+  label,
+  steps,
+  active,
+}: {
+  label: string;
+  steps: readonly string[];
+  active: boolean;
+}) {
+  return (
+    <div className="flex items-start gap-4 sm:gap-6">
+      <p
+        className={`w-20 shrink-0 pt-[3px] text-right text-xs font-medium sm:w-28 ${
+          active ? "text-brand-400" : "text-ink-500"
+        }`}
+      >
+        {label}
+      </p>
+      <div className="relative min-w-0 flex-1">
+        <div
+          aria-hidden="true"
+          className={`absolute left-0 right-0 top-[5px] h-px ${
+            active ? "bg-brand-500/50" : "bg-white/15"
+          }`}
+        />
+        <div className="relative flex items-start justify-between gap-2">
+          {steps.map((step) => (
+            <div key={step} className="flex flex-col items-center gap-2">
+              <span
+                aria-hidden="true"
+                className={`h-[11px] w-[11px] shrink-0 rounded-full border-2 border-noir-950 ${
+                  active ? "bg-brand-400" : "bg-white/30"
+                }`}
+              />
+              <span
+                className={`max-w-[5.5rem] text-center text-xs leading-tight ${
+                  active ? "text-ink-50" : "text-ink-500"
+                }`}
+              >
+                {step}
+              </span>
+            </div>
+          ))}
+          <div className="flex flex-col items-center gap-2">
+            {active ? (
+              <CheckCircle className="text-brand-400" size={18} weight="fill" />
+            ) : (
+              <Question className="text-gold-500" size={18} weight="fill" />
+            )}
+            <span
+              className={`max-w-[5.5rem] text-center text-xs font-medium leading-tight ${
+                active ? "text-brand-400" : "text-gold-500"
+              }`}
+            >
+              {active ? "Cita agendada" : "Cliente perdido"}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function MarketingPage() {
   return (
     <main className="min-h-screen">
@@ -127,6 +276,9 @@ export default function MarketingPage() {
             </a>
             <a href="#precios" className="hidden text-ink-300 hover:text-ink-50 sm:inline">
               Precios
+            </a>
+            <a href="#preguntas" className="hidden text-ink-300 hover:text-ink-50 sm:inline">
+              Preguntas
             </a>
             <a
               href={CONTACT_PHONE_HREF}
@@ -232,27 +384,54 @@ export default function MarketingPage() {
         </div>
       </section>
 
-      {/* Cómo funciona -- secuencia real de 3 pasos, por eso numerada */}
+      {/* Razones -- agitacion del problema (mensaje perdido = cliente
+          perdido) y la respuesta (personalizacion maxima, no un bot
+          generico), antes de explicar el mecanismo. */}
+      <section className="mx-auto max-w-5xl px-6 py-24">
+        <div className="mx-auto mb-14 max-w-2xl text-center">
+          <h2 className="text-2xl font-medium text-balance text-ink-50 sm:text-3xl">
+            4 razones para no perder ni un mensaje más
+          </h2>
+        </div>
+        <div className="grid gap-6 sm:grid-cols-2">
+          {REASONS.map((r) => (
+            <div
+              key={r.n}
+              className="flex gap-5 rounded-2xl border border-white/10 bg-noir-900/50 p-6"
+            >
+              <span className="font-mono-brand shrink-0 select-none text-4xl font-semibold text-white/10 sm:text-5xl">
+                {r.n}
+              </span>
+              <div>
+                <h3 className="font-semibold text-ink-50">{r.title}</h3>
+                <p className="mt-2 text-sm text-ink-300">{r.body}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Cómo funciona -- el diagrama es la explicacion: mas fuerte que una
+          lista de pasos en texto porque el contraste "3 pasos y check" vs
+          "5 pasos y cliente perdido" se ve de un vistazo. */}
       <section id="como-funciona" className="scroll-mt-20 border-y border-white/10 bg-noir-900/40">
-        <div className="mx-auto max-w-5xl px-6 py-24">
+        <div className="mx-auto max-w-4xl px-6 py-24">
           <div className="mx-auto mb-14 max-w-xl text-center">
             <p className="font-mono-brand text-xs font-medium uppercase tracking-[0.25em] text-gold-300">
-              De cero a en marcha
+              Menos pasos, más citas agendadas
             </p>
-            <h2 className="mt-3 text-2xl font-medium text-ink-50 sm:text-3xl">
-              Tres pasos, y Recepta contesta por ti
+            <h2 className="mt-3 text-2xl font-medium text-balance text-ink-50 sm:text-3xl">
+              Esto es lo que cambia cuando Recepta responde
             </h2>
+            <p className="mt-4 text-sm text-ink-300">
+              Del mensaje a la cita confirmada, en la misma conversación. Sin
+              esperas, sin que el cliente tenga que insistir.
+            </p>
           </div>
-          <div className="grid gap-10 sm:grid-cols-3 sm:gap-6">
-            {STEPS.map((step, i) => (
-              <div key={step.title} className="flex flex-col gap-3">
-                <span className="font-mono-brand text-sm text-ink-500">
-                  0{i + 1}
-                </span>
-                <h3 className="text-lg font-medium text-ink-50">{step.title}</h3>
-                <p className="text-sm text-ink-300">{step.body}</p>
-              </div>
-            ))}
+
+          <div className="flex flex-col gap-8">
+            <FlowPath label="Con Recepta" steps={FLOW_WITH_STEPS} active />
+            <FlowPath label="Sin gestionar" steps={FLOW_WITHOUT_STEPS} active={false} />
           </div>
         </div>
       </section>
@@ -275,6 +454,105 @@ export default function MarketingPage() {
               <p className="mt-1 text-sm text-ink-300">{body}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Confianza / personalizacion -- en vez de una foto de "nuestro
+          equipo" (no tenemos una que mostrar, y una de stock presentada
+          como real seria enganosa), mostramos literalmente que datos
+          configura el agente. Es mas honesto y mas convincente. */}
+      <section className="border-y border-white/10 bg-noir-900/40">
+        <div className="mx-auto grid max-w-5xl items-center gap-10 px-6 py-24 sm:grid-cols-2 sm:gap-14">
+          <div>
+            <p className="font-mono-brand text-xs font-medium uppercase tracking-[0.25em] text-gold-300">
+              Por qué confiar en Recepta
+            </p>
+            <h2 className="mt-3 text-2xl font-medium text-balance text-ink-50 sm:text-3xl">
+              Nos dedicamos únicamente a que tu WhatsApp nunca se quede sin
+              respuesta.
+            </h2>
+            <p className="mt-5 text-sm text-ink-300">
+              Para la mayoría de los negocios, contestar WhatsApp es la
+              interrupción que corta el trabajo real. Para Recepta es lo único
+              que hace — por eso lo hace bien.
+            </p>
+            <p className="mt-4 text-sm text-ink-300">
+              Cada agente se configura sobre tu negocio antes del primer
+              mensaje: qué vendes, cuánto cuesta, qué agenda maneja, qué
+              preguntas puede responder y cuáles tienes que responder tú. No
+              improvisa ni inventa: cuando no sabe algo, lo dice y te pasa la
+              conversación con el contexto listo.
+            </p>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-noir-900/70 p-6 sm:p-7">
+            <p className="font-mono-brand text-xs uppercase tracking-[0.2em] text-ink-500">
+              Lo que el agente aprende de tu negocio
+            </p>
+            <ul className="mt-5 flex flex-col gap-4">
+              {BUSINESS_PROFILE_FACTS.map((fact) => (
+                <li key={fact} className="flex items-start gap-3 text-sm text-ink-50">
+                  <CheckCircle
+                    className="mt-0.5 shrink-0 text-brand-400"
+                    size={18}
+                    weight="fill"
+                  />
+                  {fact}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* Comparativa -- misma paleta oscura que el resto (nunca un bloque
+          blanco suelto solo por costumbre de dashboard/tabla): la columna
+          Recepta se distingue por un tinte dorado, no por cambiar de tema. */}
+      <section className="mx-auto max-w-4xl px-6 py-24">
+        <div className="mx-auto mb-12 max-w-xl text-center">
+          <h2 className="text-2xl font-medium text-balance text-ink-50 sm:text-3xl">
+            Cómo nos comparamos
+          </h2>
+          <p className="mt-3 text-sm text-ink-300">
+            Hay tres formas de que un WhatsApp no se quede sin respuesta:
+            dejarlo sin gestionar, contratar a alguien para que lo revise, o
+            que lo atienda un agente formado para eso.
+          </p>
+        </div>
+
+        <div className="overflow-x-auto rounded-2xl border border-white/10">
+          <table className="w-full min-w-[540px] border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-white/10">
+                <th className="p-4 text-left font-normal text-ink-500"></th>
+                <th className="font-mono-brand bg-gold-500/10 p-4 text-center text-xs uppercase tracking-wide text-gold-300">
+                  Recepta
+                </th>
+                <th className="p-4 text-center text-xs font-normal text-ink-500">
+                  Sin gestionar
+                </th>
+                <th className="p-4 text-center text-xs font-normal text-ink-500">
+                  Persona contratada
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {COMPARISON_ROWS.map((row) => (
+                <tr key={row.label} className="border-b border-white/5 last:border-0">
+                  <td className="p-4 text-ink-50">{row.label}</td>
+                  <td className="bg-gold-500/5 p-4">
+                    <ComparisonCell value={row.recepta} />
+                  </td>
+                  <td className="p-4">
+                    <ComparisonCell value={row.sinGestionar} />
+                  </td>
+                  <td className="p-4">
+                    <ComparisonCell value={row.personaContratada} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </section>
 
@@ -333,6 +611,14 @@ export default function MarketingPage() {
             </a>
           </div>
         </div>
+      </section>
+
+      {/* Preguntas frecuentes */}
+      <section id="preguntas" className="scroll-mt-20 mx-auto max-w-3xl px-6 py-24">
+        <div className="mx-auto mb-10 max-w-xl text-center">
+          <h2 className="text-2xl font-medium text-ink-50 sm:text-3xl">Preguntas frecuentes</h2>
+        </div>
+        <FaqAccordion />
       </section>
 
       {/* Testimonios */}
