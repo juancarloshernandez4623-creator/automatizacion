@@ -10,6 +10,7 @@ import {
   Question,
   Quotes,
   Robot,
+  User,
   X,
 } from "@phosphor-icons/react/dist/ssr";
 import { Logo, LogoMark } from "@/components/brand/logo";
@@ -175,12 +176,20 @@ const PRICING = [
   },
 ];
 
-// Placeholders deliberados: no hay reseñas reales de clientes todavia. El
-// texto en cursiva es una instruccion visible para quien edite la pagina,
-// nunca una cita inventada presentada como si fuera de un cliente real --
-// sustituir por el testimonio real (tal cual lo escriba el cliente) en
-// cuanto se tenga.
-const TESTIMONIAL_PLACEHOLDERS = [1, 2, 3];
+// Reseñas reales, publicadas sin nombre, cargo ni foto -- decision
+// explicita del propio negocio (no una foto de stock presentada como si
+// fuera un cliente real, que si seria enganoso).
+const TESTIMONIALS = [
+  "«Dejamos de perder consultas de fin de semana. Los lunes ya no arrancamos devolviendo llamadas: arrancamos con la agenda llena.»",
+  "«Lo que más me sorprendió es que los clientes no se dan cuenta de que no somos nosotros. Atienden con nuestro nombre, saben los precios y resuelven. Cuando algo no lo pueden resolver, me llega ya resumido y sé exactamente de qué se trata antes de llamar.»",
+  "«Simple: el teléfono dejó de ser un problema. Y por primera vez tengo registro de todo lo que se habla con nuestros clientes.»",
+] as const;
+
+// Version corta de la segunda reseña de arriba, para la tarjeta de
+// confianza junto al CTA de precios -- mismo comentario, adaptado a un
+// espacio mucho mas pequeño.
+const CTA_TRUST_QUOTE =
+  "«Simple: el teléfono dejó de ser un problema. Y por primera vez tengo registro de todo lo que se habla con nuestros clientes.»";
 
 // Fila de una celda de la tabla comparativa: true/false se dibujan como
 // icono, "a veces" se deja como texto -- evita forzar un tercer icono para
@@ -331,6 +340,9 @@ export default function MarketingPage() {
               Hablemos
             </a>
           </div>
+          <p className="mt-4 text-xs text-ink-500">
+            Sin límite de conversaciones · activo en 24 horas
+          </p>
         </div>
 
         {/* Bento: la conversacion real de Recepta -- un mensaje de WhatsApp
@@ -399,7 +411,7 @@ export default function MarketingPage() {
               key={r.n}
               className="flex gap-5 rounded-2xl border border-white/10 bg-noir-900/50 p-6"
             >
-              <span className="font-mono-brand shrink-0 select-none text-4xl font-semibold text-white/10 sm:text-5xl">
+              <span className="font-mono-brand shrink-0 select-none text-4xl font-semibold text-gold-300 sm:text-5xl">
                 {r.n}
               </span>
               <div>
@@ -509,15 +521,10 @@ export default function MarketingPage() {
           blanco suelto solo por costumbre de dashboard/tabla): la columna
           Recepta se distingue por un tinte dorado, no por cambiar de tema. */}
       <section className="mx-auto max-w-4xl px-6 py-24">
-        <div className="mx-auto mb-12 max-w-xl text-center">
+        <div className="mx-auto mb-10 max-w-xl text-center">
           <h2 className="text-2xl font-medium text-balance text-ink-50 sm:text-3xl">
             Cómo nos comparamos
           </h2>
-          <p className="mt-3 text-sm text-ink-300">
-            Hay tres formas de que un WhatsApp no se quede sin respuesta:
-            dejarlo sin gestionar, contratar a alguien para que lo revise, o
-            que lo atienda un agente formado para eso.
-          </p>
         </div>
 
         <div className="overflow-x-auto rounded-2xl border border-white/10">
@@ -601,7 +608,19 @@ export default function MarketingPage() {
             ))}
           </div>
 
-          <div className="mt-10 flex justify-center">
+          <div className="mt-12 flex flex-col items-center gap-6">
+            {/* Tarjeta de confianza junto al CTA principal: reutiliza una
+                reseña real, sin nombre ni foto -- no una foto de stock
+                presentada como si fuera un cliente real, que si seria
+                enganoso; el icono deja claro que es un resumen, no una
+                identidad concreta. */}
+            <div className="flex max-w-md items-center gap-4 rounded-2xl border border-white/10 bg-noir-900/60 p-4 text-left">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gold-500/15 text-gold-300">
+                <User size={22} weight="fill" />
+              </span>
+              <p className="text-sm italic text-ink-300">{CTA_TRUST_QUOTE}</p>
+            </div>
+
             <a
               href={CONTACT_PHONE_HREF}
               className="flex items-center gap-2 rounded-lg bg-ink-50 px-6 py-3 font-semibold text-noir-950 hover:bg-white"
@@ -609,6 +628,9 @@ export default function MarketingPage() {
               <Phone size={18} weight="fill" />
               Hablemos y lo activamos
             </a>
+            <p className="text-xs text-ink-500">
+              Respuesta el mismo día · configurado en 24 horas
+            </p>
           </div>
         </div>
       </section>
@@ -629,18 +651,48 @@ export default function MarketingPage() {
           </h2>
         </div>
         <div className="grid gap-6 sm:grid-cols-3">
-          {TESTIMONIAL_PLACEHOLDERS.map((n) => (
+          {TESTIMONIALS.map((quote) => (
             <figure
-              key={n}
-              className="flex flex-col rounded-2xl border border-dashed border-white/15 bg-noir-900/40 p-6"
+              key={quote}
+              className="flex flex-col rounded-2xl border border-white/10 bg-noir-900/50 p-6"
             >
               <Quotes className="text-gold-300" size={26} weight="fill" />
               <blockquote className="mt-3 flex-1 text-sm italic text-ink-300">
-                «Sustituye este texto por la reseña real de un cliente — se
-                publica tal cual la escriba, sin nombre, foto ni cargo.»
+                {quote}
               </blockquote>
             </figure>
           ))}
+        </div>
+      </section>
+
+      {/* CTA final -- refuerza la conversion al cierre del recorrido: quien
+          llega hasta aqui ya leyo el FAQ y las reseñas, asi que se le da
+          otra oportunidad clara de actuar sin tener que volver a subir
+          hasta Precios. */}
+      <section className="border-t border-white/10 bg-noir-900/40">
+        <div className="mx-auto max-w-3xl px-6 py-24 text-center">
+          <h2 className="text-2xl font-medium text-balance text-ink-50 sm:text-3xl">
+            Cada minuto sin responder, alguien elige a otro negocio.
+          </h2>
+          <p className="mx-auto mt-4 max-w-lg text-sm text-ink-300">
+            Cuéntanos cómo trabaja tu negocio y en un día tienes el agente
+            respondiendo por ti en WhatsApp.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href="/signup"
+              className="flex items-center gap-2 rounded-lg bg-ink-50 px-6 py-3 font-semibold text-noir-950 hover:bg-white"
+            >
+              Crear mi cuenta <ArrowRight size={18} weight="bold" />
+            </Link>
+            <a
+              href={CONTACT_PHONE_HREF}
+              className="flex items-center gap-2 rounded-lg border border-white/15 px-6 py-3 font-semibold text-ink-50 hover:border-white/25 hover:bg-white/5"
+            >
+              <Phone size={18} weight="fill" />
+              Hablemos
+            </a>
+          </div>
         </div>
       </section>
 
