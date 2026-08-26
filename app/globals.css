@@ -13,16 +13,6 @@
   --color-brand-900: #124b39;
   --color-brand-950: #062a20;
 
-  /* Dorado tomado directamente del degrade de la cinta del logo
-     (components/brand/logo.tsx) -- se usa como acento de "vanguardia /
-     elegancia" en la landing (precios, cifras, detalles de marca), nunca
-     como color de acción principal (ese sigue siendo brand-*). */
-  --color-gold-100: #f8efd9;
-  --color-gold-300: #f1e3ad;
-  --color-gold-500: #d8ba6b;
-  --color-gold-700: #9c792b;
-  --color-gold-900: #6b5017;
-
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     Helvetica, Arial, sans-serif;
 }
@@ -48,23 +38,4 @@ body {
 .thin-scrollbar::-webkit-scrollbar-thumb {
   background-color: rgb(0 0 0 / 0.15);
   border-radius: 9999px;
-}
-
-/* Tipografia exclusiva de la landing publica (app/(marketing)), cargada via
-   next/font/google en app/(marketing)/layout.tsx y expuesta como variables
-   CSS solo dentro de ese subarbol -- el dashboard interno sigue usando
-   --font-sans (system stack) sin verse afectado. Fraunces para titulares le
-   da el registro "editorial/elegante" que pide la marca; Martian Mono marca
-   cifras y etiquetas como un guiño deliberado a "vanguardia de
-   automatizacion" (el mismo par usado en el documento de blueprint interno). */
-.marketing {
-  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
-}
-.marketing h1,
-.marketing h2,
-.marketing h3 {
-  font-family: var(--font-display), Georgia, serif;
-}
-.marketing .font-mono-brand {
-  font-family: var(--font-mono-brand), "SFMono-Regular", Consolas, monospace;
 }
