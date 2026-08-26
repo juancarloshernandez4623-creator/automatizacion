@@ -41,6 +41,10 @@ const FAQ_ITEMS = [
     q: "¿Puedo ver lo que habló con mi cliente?",
     a: "Sí — cada conversación queda registrada en tu panel, mensaje por mensaje, en tiempo real.",
   },
+  {
+    q: "¿Hay permanencia mínima?",
+    a: "No. Puedes darte de baja cuando quieras: se cobra únicamente la mensualidad del mes en curso, sin ninguna penalización.",
+  },
 ] as const;
 
 export function FaqAccordion() {

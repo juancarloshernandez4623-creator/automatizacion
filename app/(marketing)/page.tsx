@@ -1,6 +1,5 @@
 import Link from "next/link";
 import {
-  ArrowRight,
   CalendarCheck,
   CheckCircle,
   ChatCircleDots,
@@ -605,9 +604,9 @@ export default function MarketingPage() {
               <p className="font-semibold text-ink-50">¿Todavía no lo decides?</p>
               <p className="mt-1 text-ink-50">Agenda una llamada con nosotros 👇</p>
               <p className="mt-3 text-sm text-ink-300">
-                Veinte minutos para estimar cuántos mensajes de WhatsApp
-                estás perdiendo hoy y qué cambiaría si los atendiéramos
-                nosotros.
+                Veinte minutos para estimar cuántos clientes estás perdiendo
+                hoy por no responder a tiempo en WhatsApp, y qué cambiaría
+                si los atendiéramos nosotros.
               </p>
             </div>
 
@@ -669,15 +668,9 @@ export default function MarketingPage() {
             respondiendo por ti en WhatsApp.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Link
-              href="/signup"
-              className="flex items-center gap-2 rounded-lg bg-ink-50 px-6 py-3 font-semibold text-noir-950 hover:bg-white"
-            >
-              Crear mi cuenta <ArrowRight size={18} weight="bold" />
-            </Link>
             <a
               href={CONTACT_PHONE_HREF}
-              className="flex items-center gap-2 rounded-lg border border-white/15 px-6 py-3 font-semibold text-ink-50 hover:border-white/25 hover:bg-white/5"
+              className="flex items-center gap-2 rounded-lg bg-ink-50 px-6 py-3 font-semibold text-noir-950 hover:bg-white"
             >
               <Phone size={18} weight="fill" />
               Hablemos
