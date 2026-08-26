@@ -81,18 +81,22 @@ const PRICING = [
     tag: "Pago único",
     title: "Puesta en marcha",
     price: "1.500 €",
-    cadence: "instalación inicial",
+    cadence: "instalación inicial · IVA incluido",
+    // null (no undefined) para que TS infiera el mismo tipo en ambos
+    // elementos del array y no haga falta anotar PRICING a mano.
+    billingNote: null as string | null,
     items: [
       "Conexión completa de tu WhatsApp Business y tu Google Calendar",
-      "Configuración del agente con la voz y los servicios de tu negocio",
-      "Prueba supervisada con llamadas y mensajes de WhatsApp reales antes de activar",
+      "Configuración del agente con el tono y los servicios que ofreces por WhatsApp",
+      "Prueba supervisada con mensajes de WhatsApp reales antes de activar",
     ],
   },
   {
     tag: "Cada mes",
     title: "Suscripción Recepta",
     price: "299,99 €",
-    cadence: "al mes",
+    cadence: "al mes · IVA incluido",
+    billingNote: "El primer mes no se cobra — empiezas a pagar a partir del segundo",
     items: [
       "Agente de IA activo 24/7, sin límite de conversaciones",
       "Agenda de citas conectada a tu Google Calendar",
@@ -138,7 +142,7 @@ export default function MarketingPage() {
               href="/signup"
               className="rounded-lg bg-ink-50 px-4 py-2 font-semibold text-noir-950 hover:bg-white"
             >
-              Empieza gratis
+              Crear cuenta
             </Link>
           </nav>
         </div>
@@ -298,8 +302,11 @@ export default function MarketingPage() {
                 <h3 className="mt-4 text-lg font-semibold text-ink-50">{plan.title}</h3>
                 <p className="mt-3 flex items-baseline gap-2">
                   <span className="text-3xl font-semibold text-ink-50">{plan.price}</span>
-                  <span className="text-sm text-ink-500">{plan.cadence}</span>
+                  <span className="text-sm text-ink-300">{plan.cadence}</span>
                 </p>
+                {plan.billingNote ? (
+                  <p className="mt-2 text-xs font-medium text-gold-300">{plan.billingNote}</p>
+                ) : null}
                 <ul className="mt-6 flex flex-1 flex-col gap-3">
                   {plan.items.map((item) => (
                     <li key={item} className="flex items-start gap-2 text-sm text-ink-300">
@@ -342,7 +349,7 @@ export default function MarketingPage() {
               className="flex flex-col rounded-2xl border border-dashed border-white/15 bg-noir-900/40 p-6"
             >
               <Quotes className="text-gold-300" size={26} weight="fill" />
-              <blockquote className="mt-3 flex-1 text-sm italic text-ink-500">
+              <blockquote className="mt-3 flex-1 text-sm italic text-ink-300">
                 «Sustituye este texto por la reseña real de un cliente — se
                 publica tal cual la escriba, sin nombre, foto ni cargo.»
               </blockquote>
@@ -360,7 +367,7 @@ export default function MarketingPage() {
               <p className="font-mono-brand text-sm font-medium uppercase tracking-[0.2em] text-ink-50">
                 Recepta Technologies
               </p>
-              <p className="mt-1 text-sm text-ink-500">
+              <p className="mt-1 text-sm text-ink-300">
                 Recepción por WhatsApp, con inteligencia real.
               </p>
             </div>
