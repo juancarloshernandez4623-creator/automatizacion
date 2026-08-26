@@ -26,10 +26,6 @@ const FAQ_ITEMS = [
     a: "No. Conectas tu propio WhatsApp Business tal como está; Recepta responde desde tu mismo número, tus clientes no notan ningún cambio.",
   },
   {
-    q: "¿Atienden también llamadas de teléfono?",
-    a: "No — Recepta trabaja exclusivamente por WhatsApp, que es donde hoy te escriben tus clientes.",
-  },
-  {
     q: "¿Qué pasa fuera de horario y los fines de semana?",
     a: "El agente sigue respondiendo 24/7. Si hace falta que intervengas tú, la conversación queda marcada en el panel para que la retomes en cuanto puedas.",
   },
@@ -71,14 +67,16 @@ export function FaqAccordion() {
                 }`}
               />
             </button>
-            {/* grid-template-rows 0fr->1fr en vez de max-height: anima a la
-                altura real del contenido sin adivinar un valor en px. */}
+            {/* overflow-hidden + max-height: la respuesta queda fisicamente
+                recortada a 0 mientras isOpen es false -- max-h-96 es un
+                limite generoso, muy por encima de lo que ocupa cualquier
+                respuesta, asi que nunca corta texto cuando esta abierta. */}
             <div
-              className={`grid transition-[grid-template-rows] duration-200 motion-reduce:transition-none ${
-                isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+              className={`overflow-hidden transition-[max-height] duration-300 ease-in-out motion-reduce:transition-none ${
+                isOpen ? "max-h-96" : "max-h-0"
               }`}
             >
-              <p className="overflow-hidden pb-5 text-sm text-ink-300">{item.a}</p>
+              <p className="pb-5 text-sm text-ink-300">{item.a}</p>
             </div>
           </div>
         );

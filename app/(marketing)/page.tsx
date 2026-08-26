@@ -10,7 +10,6 @@ import {
   Question,
   Quotes,
   Robot,
-  User,
   X,
 } from "@phosphor-icons/react/dist/ssr";
 import { Logo, LogoMark } from "@/components/brand/logo";
@@ -185,12 +184,6 @@ const TESTIMONIALS = [
   "«Simple: el teléfono dejó de ser un problema. Y por primera vez tengo registro de todo lo que se habla con nuestros clientes.»",
 ] as const;
 
-// Version corta de la segunda reseña de arriba, para la tarjeta de
-// confianza junto al CTA de precios -- mismo comentario, adaptado a un
-// espacio mucho mas pequeño.
-const CTA_TRUST_QUOTE =
-  "«Simple: el teléfono dejó de ser un problema. Y por primera vez tengo registro de todo lo que se habla con nuestros clientes.»";
-
 // Fila de una celda de la tabla comparativa: true/false se dibujan como
 // icono, "a veces" se deja como texto -- evita forzar un tercer icono para
 // un caso que en realidad es ambiguo.
@@ -326,22 +319,21 @@ export default function MarketingPage() {
             tu negocio.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Link
-              href="/signup"
-              className="flex items-center gap-2 rounded-lg bg-ink-50 px-6 py-3 font-semibold text-noir-950 hover:bg-white"
-            >
-              Crear mi cuenta <ArrowRight size={18} weight="bold" />
-            </Link>
+            {/* CTA unico del hero: reservar una llamada gratuita, en vez de
+                un doble boton "crear cuenta / hablemos" -- este negocio se
+                activa con una instalacion guiada, no con un alta de
+                autoservicio, asi que el CTA mas fuerte de la pagina apunta
+                directo a esa conversacion. */}
             <a
               href={CONTACT_PHONE_HREF}
-              className="flex items-center gap-2 rounded-lg border border-white/15 px-6 py-3 font-semibold text-ink-50 hover:border-white/25 hover:bg-white/5"
+              className="flex items-center gap-2 rounded-lg bg-ink-50 px-6 py-3 font-semibold text-noir-950 hover:bg-white"
             >
-              <Phone size={18} weight="fill" />
-              Hablemos
+              <CalendarCheck size={18} weight="fill" />
+              Agendar mi llamada gratuita
             </a>
           </div>
           <p className="mt-4 text-xs text-ink-500">
-            Sin límite de conversaciones · activo en 24 horas
+            Gratis y sin compromiso · 20 minutos
           </p>
         </div>
 
@@ -609,16 +601,14 @@ export default function MarketingPage() {
           </div>
 
           <div className="mt-12 flex flex-col items-center gap-6">
-            {/* Tarjeta de confianza junto al CTA principal: reutiliza una
-                reseña real, sin nombre ni foto -- no una foto de stock
-                presentada como si fuera un cliente real, que si seria
-                enganoso; el icono deja claro que es un resumen, no una
-                identidad concreta. */}
-            <div className="flex max-w-md items-center gap-4 rounded-2xl border border-white/10 bg-noir-900/60 p-4 text-left">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gold-500/15 text-gold-300">
-                <User size={22} weight="fill" />
-              </span>
-              <p className="text-sm italic text-ink-300">{CTA_TRUST_QUOTE}</p>
+            <div className="max-w-md text-center">
+              <p className="font-semibold text-ink-50">¿Todavía no lo decides?</p>
+              <p className="mt-1 text-ink-50">Agenda una llamada con nosotros 👇</p>
+              <p className="mt-3 text-sm text-ink-300">
+                Veinte minutos para estimar cuántos mensajes de WhatsApp
+                estás perdiendo hoy y qué cambiaría si los atendiéramos
+                nosotros.
+              </p>
             </div>
 
             <a
