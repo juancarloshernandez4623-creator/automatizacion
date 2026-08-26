@@ -13,6 +13,28 @@
   --color-brand-900: #124b39;
   --color-brand-950: #062a20;
 
+  /* Dorado tomado directamente del degrade de la cinta del logo
+     (components/brand/logo.tsx) -- se usa como acento de "vanguardia /
+     elegancia" en la landing (precios, cifras, detalles de marca), nunca
+     como color de acción principal (ese sigue siendo brand-*). */
+  --color-gold-100: #f8efd9;
+  --color-gold-300: #f1e3ad;
+  --color-gold-500: #d8ba6b;
+  --color-gold-700: #9c792b;
+  --color-gold-900: #6b5017;
+
+  /* Paleta oscura exclusiva de la landing publica (ver .marketing mas abajo).
+     "noir" = fondo/superficies; "ink" = texto sobre ese fondo. Deliberadamente
+     un solo tema (no sigue prefers-color-scheme): la landing es la cara de
+     marca de Recepta y se ve igual para todo el mundo, como la mayoria de
+     paginas de producto SaaS con identidad oscura fija. El dashboard interno
+     (app/(app)) no usa estos tokens y sigue con --background/--foreground. */
+  --color-noir-950: #0a0c0a;
+  --color-noir-900: #12140f;
+  --color-ink-50: #f4f2ea;
+  --color-ink-300: #acb3a6;
+  --color-ink-500: #6f766a;
+
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     Helvetica, Arial, sans-serif;
 }
@@ -38,4 +60,39 @@ body {
 .thin-scrollbar::-webkit-scrollbar-thumb {
   background-color: rgb(0 0 0 / 0.15);
   border-radius: 9999px;
+}
+
+/* Tipografia exclusiva de la landing publica (app/(marketing)), cargada via
+   next/font/google en app/(marketing)/layout.tsx y expuesta como variables
+   CSS solo dentro de ese subarbol -- el dashboard interno sigue usando
+   --font-sans (system stack) sin verse afectado. Fraunces para titulares le
+   da el registro "editorial/elegante" que pide la marca; Martian Mono marca
+   cifras y etiquetas como un guiño deliberado a "vanguardia de
+   automatizacion" (el mismo par usado en el documento de blueprint interno). */
+.marketing {
+  /* Dos resplandores radiales muy tenues (oro arriba-izquierda, verde marca
+     arriba-derecha) sobre el fondo casi negro -- da profundidad de "estudio
+     fotografico" sin caer en un fondo negro plano ni en un gradiente obvio
+     de esquina a esquina. */
+  background-color: var(--color-noir-950);
+  background-image: radial-gradient(
+      60rem 30rem at 15% -10%,
+      color-mix(in srgb, var(--color-gold-500) 14%, transparent),
+      transparent
+    ),
+    radial-gradient(
+      50rem 26rem at 90% 0%,
+      color-mix(in srgb, var(--color-brand-500) 12%, transparent),
+      transparent
+    );
+  color: var(--color-ink-50);
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+}
+.marketing h1,
+.marketing h2,
+.marketing h3 {
+  font-family: var(--font-display), Georgia, serif;
+}
+.marketing .font-mono-brand {
+  font-family: var(--font-mono-brand), "SFMono-Regular", Consolas, monospace;
 }
