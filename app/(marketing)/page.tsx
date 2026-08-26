@@ -9,6 +9,7 @@ import {
   Question,
   Quotes,
   Robot,
+  WhatsappLogo,
   X,
 } from "@phosphor-icons/react/dist/ssr";
 import { Logo, LogoMark } from "@/components/brand/logo";
@@ -16,11 +17,18 @@ import { FaqAccordion } from "./faq-accordion";
 
 // Numero de contacto unico de Recepta: alimenta el link "Hablemos" del nav,
 // el CTA de precios y el pie de pagina -- un solo cambio aqui se propaga a
-// los 3 sitios si el numero cambia.
+// los 3 sitios si el numero cambia. El mismo numero atiende llamada y
+// WhatsApp, de ahi que ambos hrefs deriven del mismo digito a digito.
 const CONTACT_PHONE_DISPLAY = "+34 625 52 97 58";
 const CONTACT_PHONE_HREF = "tel:+34625529758";
+const WHATSAPP_HREF = "https://wa.me/34625529758";
 
 const SOCIAL_LINKS = [
+  {
+    label: "WhatsApp",
+    href: WHATSAPP_HREF,
+    Icon: WhatsappLogo,
+  },
   {
     label: "LinkedIn",
     href: "https://www.linkedin.com/company/recepta.vercel.app/?viewAsMember=true",
@@ -288,6 +296,15 @@ export default function MarketingPage() {
               <Phone size={16} weight="fill" />
               Hablemos
             </a>
+            <a
+              href={WHATSAPP_HREF}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Escríbenos por WhatsApp"
+              className="text-ink-300 hover:text-ink-50"
+            >
+              <WhatsappLogo size={18} weight="fill" />
+            </a>
             <Link href="/login" className="text-ink-300 hover:text-ink-50">
               Iniciar sesión
             </Link>
@@ -330,9 +347,18 @@ export default function MarketingPage() {
               <CalendarCheck size={18} weight="fill" />
               Agendar mi llamada gratuita
             </a>
+            <a
+              href={WHATSAPP_HREF}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 rounded-lg border border-white/15 px-6 py-3 font-semibold text-ink-50 hover:border-brand-400 hover:text-brand-400"
+            >
+              <WhatsappLogo size={18} weight="fill" />
+              Escríbenos por WhatsApp
+            </a>
           </div>
           <p className="mt-4 text-xs text-ink-500">
-            Gratis y sin compromiso · 20 minutos
+            Gratis y sin compromiso · 20 minutos · mismo número para llamada o WhatsApp
           </p>
         </div>
 
@@ -610,13 +636,24 @@ export default function MarketingPage() {
               </p>
             </div>
 
-            <a
-              href={CONTACT_PHONE_HREF}
-              className="flex items-center gap-2 rounded-lg bg-ink-50 px-6 py-3 font-semibold text-noir-950 hover:bg-white"
-            >
-              <Phone size={18} weight="fill" />
-              Hablemos y lo activamos
-            </a>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <a
+                href={CONTACT_PHONE_HREF}
+                className="flex items-center gap-2 rounded-lg bg-ink-50 px-6 py-3 font-semibold text-noir-950 hover:bg-white"
+              >
+                <Phone size={18} weight="fill" />
+                Hablemos y lo activamos
+              </a>
+              <a
+                href={WHATSAPP_HREF}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 rounded-lg border border-white/15 px-6 py-3 font-semibold text-ink-50 hover:border-brand-400 hover:text-brand-400"
+              >
+                <WhatsappLogo size={18} weight="fill" />
+                Escríbenos por WhatsApp
+              </a>
+            </div>
             <p className="text-xs text-ink-500">
               Respuesta el mismo día · configurado en 24 horas
             </p>
@@ -674,6 +711,15 @@ export default function MarketingPage() {
             >
               <Phone size={18} weight="fill" />
               Hablemos
+            </a>
+            <a
+              href={WHATSAPP_HREF}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 rounded-lg border border-white/15 px-6 py-3 font-semibold text-ink-50 hover:border-brand-400 hover:text-brand-400"
+            >
+              <WhatsappLogo size={18} weight="fill" />
+              Escríbenos por WhatsApp
             </a>
           </div>
         </div>
