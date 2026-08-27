@@ -1,4 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
+import { checkAuth, AuthCheckFailedError } from "@/lib/supabase/auth-check";
+
+export { AuthCheckFailedError };
 
 export class UnauthorizedError extends Error {
   constructor(message = "No autenticado") {
@@ -10,8 +13,12 @@ export class UnauthorizedError extends Error {
 /**
  * Helper compartido por Server Actions y Server Components: resuelve el
  * `organization_id` (y datos basicos del profile) del usuario autenticado
- * actual. Lanza `UnauthorizedError` si no hay sesion o el profile no tiene
- * organizacion (no deberia pasar, ver private.handle_new_user()).
+ * actual. Lanza `UnauthorizedError` si Supabase confirma que no hay sesion
+ * o el profile no tiene organizacion (no deberia pasar, ver
+ * private.handle_new_user()); lanza `AuthCheckFailedError` (ver
+ * lib/supabase/auth-check.ts) si no se pudo determinar si hay sesion o no
+ * -- ese caso NUNCA se trata como "no autenticado", para no confundir una
+ * incidencia temporal de Supabase con un logout real.
  *
  * No reemplaza RLS: cada query hecha con el cliente devuelto por
  * `createClient()` sigue filtrando por policies. Este helper solo evita
@@ -20,13 +27,11 @@ export class UnauthorizedError extends Error {
 export async function requireCurrentOrg() {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+  const authResult = await checkAuth(supabase);
+  if (authResult.status === "unauthenticated") {
     throw new UnauthorizedError();
   }
+  const user = authResult.user;
 
   const { data: profile, error } = await supabase
     .from("profiles")

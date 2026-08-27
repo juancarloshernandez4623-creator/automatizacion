@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { google } from "googleapis";
 import { requireCurrentOrg, UnauthorizedError } from "@/lib/auth/current-org";
+import { AuthCheckFailedError } from "@/lib/supabase/auth-check";
 import { decrypt } from "@/lib/crypto";
 import { getAuthenticatedClient } from "@/lib/google/oauth";
 
@@ -43,6 +44,12 @@ export async function GET() {
 
     return NextResponse.json({ calendars });
   } catch (err) {
+    if (err instanceof AuthCheckFailedError) {
+      // No se pudo verificar la sesion (Supabase Auth lento/caido) -- no es
+      // un 401 real, y decir "no autenticado" seria enganoso porque el
+      // usuario puede tener sesion valida perfectamente.
+      return NextResponse.json({ error: err.message }, { status: 503 });
+    }
     if (err instanceof UnauthorizedError) {
       return NextResponse.json({ error: err.message }, { status: 401 });
     }
