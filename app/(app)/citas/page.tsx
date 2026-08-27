@@ -33,6 +33,7 @@ export default async function CitasPage({
     .from("appointments")
     .select("id, service, starts_at, ends_at, status, full_name, phone, is_new_patient, notes")
     .eq("organization_id", organizationId)
+    .neq("status", "cancelled")
     .gte("starts_at", gridStart.toISOString())
     .lt("starts_at", gridEnd.toISOString())
     .order("starts_at", { ascending: true });
