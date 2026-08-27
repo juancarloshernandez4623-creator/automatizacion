@@ -1,4 +1,5 @@
 import { createGetAvailableSlotsTool } from "./get-available-slots";
+import { createCheckSlotAvailabilityTool } from "./check-slot-availability";
 import { createBookAppointmentTool } from "./book-appointment";
 import { createSaveContactInfoTool } from "./save-contact-info";
 import { createRequestHumanHandoffTool } from "./request-human-handoff";
@@ -14,6 +15,7 @@ export type { AgentToolContext } from "./context";
 export function buildAgentTools(ctx: AgentToolContext) {
   return {
     get_available_slots: createGetAvailableSlotsTool(ctx),
+    check_slot_availability: createCheckSlotAvailabilityTool(ctx),
     book_appointment: createBookAppointmentTool(ctx),
     save_contact_info: createSaveContactInfoTool(ctx),
     request_human_handoff: createRequestHumanHandoffTool(ctx),

@@ -112,3 +112,75 @@ export async function getFreeBusySlots({
 
   return slots;
 }
+
+export type SlotAvailabilityResult =
+  | { available: true }
+  | { available: false; reason: "past" | "outside_business_hours" | "busy" };
+
+/**
+ * Comprueba si un horario CONCRETO (propuesto por el cliente, no elegido de
+ * una lista de sugerencias) esta realmente libre: dentro del horario de
+ * atencion del dia que le corresponde, no en el pasado, y sin choque con el
+ * calendario real. Esto es justo lo que le faltaba al flujo: `getFreeBusySlots`
+ * solo SUGIERE huecos (los primeros que encuentra), nunca CONFIRMA uno que
+ * el cliente proponga por su cuenta -- sin esta funcion, cuando alguien
+ * pedia una hora que no estuviera entre las 3 sugeridas, el agente no tenia
+ * ninguna tool que se lo confirmara y terminaba respondiendo "no disponible"
+ * por pura precaucion, sin haber comprobado nada de verdad (aunque el hueco
+ * estuviera perfectamente libre).
+ */
+export async function isSlotAvailable({
+  calendar,
+  calendarId,
+  businessHours,
+  startsAt,
+  durationMinutes,
+  timezone,
+}: {
+  calendar: calendar_v3.Calendar;
+  calendarId: string;
+  businessHours: BusinessHours;
+  startsAt: Date;
+  durationMinutes: number;
+  timezone: string;
+}): Promise<SlotAvailabilityResult> {
+  const now = new Date();
+  if (startsAt.getTime() <= now.getTime()) {
+    return { available: false, reason: "past" };
+  }
+
+  const endsAt = new Date(startsAt.getTime() + durationMinutes * 60_000);
+  const dayYmd = formatInTimeZone(startsAt, timezone, "yyyy-MM-dd");
+  const weekday = weekdayKeyOf(dayYmd);
+  const ranges = businessHours[weekday] ?? [];
+
+  const fitsBusinessHours = ranges.some((range) => {
+    const rangeStart = fromZonedTime(`${dayYmd}T${range.start}:00`, timezone);
+    const rangeEnd = fromZonedTime(`${dayYmd}T${range.end}:00`, timezone);
+    return startsAt.getTime() >= rangeStart.getTime() && endsAt.getTime() <= rangeEnd.getTime();
+  });
+
+  if (!fitsBusinessHours) {
+    return { available: false, reason: "outside_business_hours" };
+  }
+
+  const freeBusyRes = await calendar.freebusy.query({
+    requestBody: {
+      timeMin: startsAt.toISOString(),
+      timeMax: endsAt.toISOString(),
+      timeZone: timezone,
+      items: [{ id: calendarId }],
+    },
+  });
+
+  const busyRaw = freeBusyRes.data.calendars?.[calendarId]?.busy ?? [];
+  const busy: BusyPeriod[] = busyRaw
+    .filter((b): b is { start: string; end: string } => Boolean(b.start && b.end))
+    .map((b) => ({ start: new Date(b.start).getTime(), end: new Date(b.end).getTime() }));
+
+  if (overlaps(startsAt.getTime(), endsAt.getTime(), busy)) {
+    return { available: false, reason: "busy" };
+  }
+
+  return { available: true };
+}

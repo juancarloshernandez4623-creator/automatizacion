@@ -183,6 +183,20 @@ async function handleMetaWebhook(request: NextRequest): Promise<NextResponse> {
           continue;
         }
 
+        // Reacciones (y otros tipos marcados en AGENT_SKIP_TYPES): se
+        // guardan arriba para que se vean en el dashboard, pero nunca deben
+        // generar una respuesta -- un 👍 no es una pregunta.
+        if (!message.needsAgentReply) {
+          logger.info({
+            event: "whatsapp_message_stored_no_reply_needed",
+            organization_id: resolved.organizationId,
+            wa_message_id: message.waMessageId,
+            message_type: message.type,
+            latency_ms: Date.now() - messageStartedAt,
+          });
+          continue;
+        }
+
         // Da sensacion de atencion inmediata mientras el agente procesa
         // (puede tardar unos segundos si consulta disponibilidad en Google
         // Calendar, etc.). No bloquea ni falla el flujo si Meta lo rechaza.

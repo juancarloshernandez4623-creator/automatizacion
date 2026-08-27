@@ -8,7 +8,7 @@ import type { AgentToolContext } from "./context";
 export function createGetAvailableSlotsTool(ctx: AgentToolContext) {
   return tool({
     description:
-      "Devuelve hasta 3 horarios REALES disponibles para un servicio, calculados contra el horario de atencion del negocio y el calendario de Google (no inventes horarios que no vengan de esta tool). Si el cliente pide una fecha o rango futuro concreto (ej. 'la semana que viene', 'en marzo', 'el dia 15'), pasa earliest_date -- si lo omites, la busqueda siempre arranca hoy y puede no llegar nunca a esa fecha si ya hay huecos libres antes.",
+      "SUGIERE hasta 3 horarios REALES disponibles para un servicio, calculados contra el horario de atencion del negocio y el calendario de Google (no inventes horarios que no vengan de esta tool). Esta tool es para cuando el cliente aun no ha dicho una hora concreta ('¿que horarios tenéis?'). Si el cliente propone SU PROPIA fecha/hora exacta ('¿puede ser a las 17:30?', 'el jueves a las 10'), usa check_slot_availability en su lugar -- esta tool nunca confirma un horario especifico, solo sugiere los mas cercanos. Si el cliente pide una fecha o rango futuro concreto para las sugerencias (ej. 'la semana que viene', 'en marzo'), pasa earliest_date -- si lo omites, la busqueda siempre arranca hoy y puede no llegar nunca a esa fecha si ya hay huecos libres antes.",
     inputSchema: z.object({
       service: z
         .string()

@@ -20,10 +20,25 @@ const webhookMessageSchema = z.object({
   timestamp: z.string().optional(),
   type: z.string(),
   text: z.object({ body: z.string() }).optional(),
+  // Reaccion a un mensaje previo (alguien pulso un emoji sobre un mensaje
+  // nuestro o suyo). `emoji` viene vacio cuando el cliente QUITA una
+  // reaccion que habia puesto antes -- no es un mensaje malformado.
+  reaction: z.object({ message_id: z.string().optional(), emoji: z.string().optional() }).optional(),
   // Otros tipos (image, audio, button, interactive, location, ...) llegan
   // con sus propias claves; no las tipamos todas, `extractMessageText`
   // aplica un fallback generico.
 });
+
+/**
+ * Tipos de mensaje que se guardan en la conversacion pero NUNCA deben
+ * disparar una respuesta del agente -- una reaccion (ej. un 👍 a un mensaje
+ * nuestro) es una senal social ligera, no una pregunta ni una peticion.
+ * Antes de esto, cualquier reaccion se colaba a `runAgent` como si fuera un
+ * mensaje de texto normal (con el marcador "no soportado" como contenido),
+ * y el agente terminaba generando una respuesta confusa sin sentido a algo
+ * que nunca pidio nada.
+ */
+const AGENT_SKIP_TYPES = new Set(["reaction"]);
 
 const webhookValueSchema = z.object({
   metadata: z.object({
@@ -57,6 +72,8 @@ export type ParsedWebhookMessage = {
   contactName: string | null;
   text: string;
   type: string;
+  /** false para tipos como "reaction": se guardan, pero nunca invocan al agente. */
+  needsAgentReply: boolean;
 };
 
 export type ParsedWebhookEvent = {
@@ -74,6 +91,10 @@ function extractMessageText(
 ): string {
   if (message.type === "text" && message.text) {
     return message.text.body;
+  }
+  if (message.type === "reaction") {
+    const emoji = message.reaction?.emoji;
+    return emoji ? `Reaccionó con ${emoji}` : "Quitó su reacción a un mensaje";
   }
   // Tipos no-texto (image, audio, sticker, location, interactive, button,
   // etc.): guardamos un marcador legible en vez del contenido binario/JSON
@@ -119,6 +140,7 @@ export function parseWhatsAppWebhookPayload(json: unknown): ParsedWebhookEvent |
       contactName: contactByWaId.get(message.from)?.profile?.name ?? null,
       text: extractMessageText(message),
       type: message.type,
+      needsAgentReply: !AGENT_SKIP_TYPES.has(message.type),
     })),
   };
 }

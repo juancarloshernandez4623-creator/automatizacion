@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import { getOrgCalendarClient } from "@/lib/google/calendar-client";
 import { createCalendarEvent } from "@/lib/google/create-event";
+import { getFreeBusySlots, isSlotAvailable } from "@/lib/google/freebusy";
 import type { AgentToolContext } from "./context";
 
 const UNIQUE_VIOLATION = "23505";
@@ -73,6 +74,44 @@ export function createBookAppointmentTool(ctx: AgentToolContext) {
         return {
           error:
             "Este negocio aun no ha conectado su Google Calendar, no puedo crear la cita todavia. Pide que un humano la agende manualmente.",
+        };
+      }
+
+      // Revalidacion defensiva justo antes de crear nada: `starts_at` puede
+      // venir de una sugerencia de hace varios turnos de conversacion (el
+      // cliente tardo en confirmar, o el LLM lo reconstruyo a mano en vez de
+      // copiar el valor exacto de una tool anterior) -- nunca crear el
+      // evento sin comprobar aqui mismo, con datos reales, que ese horario
+      // sigue libre. Antes de este cambio no habia ninguna comprobacion aqui:
+      // si algo fallaba mas adelante (ej. Calendar), el LLM terminaba
+      // inventando un "parece que no esta disponible" sin ningun dato real
+      // detras, y volvia a ofrecer las mismas 3 sugerencias de siempre.
+      const availability = await isSlotAvailable({
+        calendar: calendarClient.calendar,
+        calendarId: calendarClient.calendarId,
+        businessHours: ctx.businessHours,
+        startsAt: startsAtDate,
+        durationMinutes: matchedService.duration_minutes,
+        timezone: ctx.organizationTimezone,
+      });
+
+      if (!availability.available) {
+        const alternatives = await getFreeBusySlots({
+          calendar: calendarClient.calendar,
+          calendarId: calendarClient.calendarId,
+          businessHours: ctx.businessHours,
+          durationMinutes: matchedService.duration_minutes,
+          timezone: ctx.organizationTimezone,
+          searchFrom: startsAtDate,
+        });
+        return {
+          error:
+            availability.reason === "busy"
+              ? "Ese horario ya no esta libre (se ocupo mientras tanto)."
+              : availability.reason === "outside_business_hours"
+                ? "Ese horario esta fuera del horario de atencion del negocio."
+                : "Ese horario ya paso.",
+          alternatives,
         };
       }
 
