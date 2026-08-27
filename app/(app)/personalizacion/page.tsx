@@ -15,13 +15,19 @@ export default async function PersonalizacionPage() {
 
   const [{ data: config }, { data: organization }] = await Promise.all([
     supabase.from("agent_configs").select("*").eq("organization_id", organizationId).maybeSingle(),
-    supabase.from("organizations").select("name").eq("id", organizationId).single(),
+    supabase.from("organizations").select("name, timezone").eq("id", organizationId).single(),
   ]);
 
   const initialValues: AgentConfigFormValues = {
     // Fuente de verdad unica: `organizations.name` (mismo dato que muestran
     // el sidebar y el titulo de la pestana, ver app/(app)/layout.tsx).
     organizationName: organization?.name ?? "",
+    // Igual que name: vive en `organizations.timezone`, la misma columna que
+    // usan /citas y todas las tools del agente (get_available_slots,
+    // book_appointment) para calcular horarios reales. La columna tiene un
+    // default de BD ('America/Mexico_City') que rara vez es el correcto --
+    // este campo es lo unico que permite corregirlo desde la UI.
+    timezone: organization?.timezone ?? "America/Mexico_City",
     systemPrompt: config?.system_prompt ?? DEFAULT_SYSTEM_PROMPT,
     tone: config?.tone ?? DEFAULT_TONE,
     // Las columnas jsonb (business_info/services/business_hours) se leen

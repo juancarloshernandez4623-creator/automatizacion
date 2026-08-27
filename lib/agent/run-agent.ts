@@ -88,11 +88,11 @@ export async function runAgent({
     .eq("id", organizationId)
     .single();
 
-  const organizationTimezone = org?.timezone ?? "America/Mexico_City";
-  // El sandbox de /personalizacion manda `agentConfigOverride` con lo que hay
-  // en pantalla (sin guardar) -- si trae organizationName, tiene prioridad
-  // sobre el de BD, para que el chat de prueba refleje el nombre que se esta
-  // escribiendo en ese momento, no el ya guardado.
+  // Mismo patron que organizationName justo abajo: si el sandbox manda un
+  // override, gana sobre el de BD, para que el chat de prueba calcule
+  // disponibilidad con la zona horaria que se esta editando en pantalla
+  // (aun sin guardar), no con la ya guardada.
+  const organizationTimezone = agentConfigOverride?.timezone ?? org?.timezone ?? "America/Mexico_City";
   const organizationName = agentConfigOverride?.organizationName ?? org?.name ?? "tu negocio";
 
   let agentConfig: AgentConfigRow;

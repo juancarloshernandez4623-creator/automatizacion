@@ -44,6 +44,11 @@ export type BusinessInfo = {
 
 export type AgentConfigFormValues = {
   organizationName: string;
+  /** IANA timezone, ej. "Europe/Madrid". Vive en `organizations.timezone`,
+   * no en `agent_configs` -- misma logica que `organizationName` (ver
+   * comentario de BusinessInfo mas abajo): una sola fuente de verdad,
+   * compartida con /citas y el agente (get_available_slots, book_appointment). */
+  timezone: string;
   systemPrompt: string;
   tone: string;
   businessInfo: BusinessInfo;
@@ -51,6 +56,36 @@ export type AgentConfigFormValues = {
   businessHours: BusinessHours;
   handoffMessage: string;
 };
+
+/** Zonas horarias mas comunes para negocios hispanohablantes. La lista no
+ * pretende ser exhaustiva (hay ~400 zonas IANA) -- cubre los paises mas
+ * probables; si un negocio necesita otra, puede escribirla directamente
+ * (el select acepta cualquier string igualmente via <option> custom). */
+export const COMMON_TIMEZONES: { value: string; label: string }[] = [
+  { value: "Europe/Madrid", label: "España — Madrid (peninsular y Baleares)" },
+  { value: "Atlantic/Canary", label: "España — Canarias" },
+  { value: "America/Mexico_City", label: "México — Ciudad de México" },
+  { value: "America/Bogota", label: "Colombia — Bogotá" },
+  { value: "America/Lima", label: "Perú — Lima" },
+  { value: "America/Santiago", label: "Chile — Santiago" },
+  { value: "America/Argentina/Buenos_Aires", label: "Argentina — Buenos Aires" },
+  { value: "America/Montevideo", label: "Uruguay — Montevideo" },
+  { value: "America/Caracas", label: "Venezuela — Caracas" },
+  { value: "America/Guayaquil", label: "Ecuador — Guayaquil" },
+  { value: "America/La_Paz", label: "Bolivia — La Paz" },
+  { value: "America/Asuncion", label: "Paraguay — Asunción" },
+  { value: "America/Santo_Domingo", label: "República Dominicana — Santo Domingo" },
+  { value: "America/Panama", label: "Panamá" },
+  { value: "America/Costa_Rica", label: "Costa Rica" },
+  { value: "America/Guatemala", label: "Guatemala" },
+  { value: "America/El_Salvador", label: "El Salvador" },
+  { value: "America/Tegucigalpa", label: "Honduras" },
+  { value: "America/Managua", label: "Nicaragua" },
+  { value: "America/New_York", label: "EE. UU. — Este (Nueva York, Miami)" },
+  { value: "America/Chicago", label: "EE. UU. — Central" },
+  { value: "America/Denver", label: "EE. UU. — Montaña" },
+  { value: "America/Los_Angeles", label: "EE. UU. — Pacífico" },
+];
 
 export type SlotSuggestion = {
   /** ISO 8601 con offset, en la timezone de la organizacion. */

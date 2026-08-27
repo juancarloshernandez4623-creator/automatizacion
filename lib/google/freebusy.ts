@@ -31,6 +31,15 @@ function overlaps(aStart: number, aEnd: number, busy: BusyPeriod[]): boolean {
  * Genera hasta 3 horarios libres reales para un servicio, respetando
  * `business_hours` y la disponibilidad real del calendario de Google
  * (FreeBusy query). Devuelve ISO strings (con offset de `timezone`).
+ *
+ * `searchFrom` (opcional) permite arrancar la busqueda en una fecha futura
+ * en vez de "ahora" -- sin esto, como el loop de dias corta apenas junta
+ * MAX_SLOTS, un negocio con >=3 huecos libres HOY nunca llegaba a ofrecer
+ * nada de manana en adelante, sin importar que `daysAhead` fuera mayor: ese
+ * parametro solo mueve el FINAL de la ventana de busqueda, nunca el inicio.
+ * Por eso "agenda para la semana que viene" siempre devolvia horarios de
+ * hoy. `searchFrom` nunca puede quedar en el pasado real (se recorta contra
+ * `now`) para no ofrecer huecos que ya pasaron.
  */
 export async function getFreeBusySlots({
   calendar,
@@ -39,6 +48,7 @@ export async function getFreeBusySlots({
   durationMinutes,
   daysAhead = DEFAULT_DAYS_AHEAD,
   timezone,
+  searchFrom,
 }: {
   calendar: calendar_v3.Calendar;
   calendarId: string;
@@ -46,14 +56,17 @@ export async function getFreeBusySlots({
   durationMinutes: number;
   daysAhead?: number;
   timezone: string;
+  /** Instante real a partir del cual buscar; por defecto "ahora". */
+  searchFrom?: Date;
 }): Promise<SlotSuggestion[]> {
   const now = new Date();
-  const todayYmd = formatInTimeZone(now, timezone, "yyyy-MM-dd");
-  const rangeEnd = fromZonedTime(`${ymdPlusDays(todayYmd, daysAhead + 1)}T00:00:00`, timezone);
+  const effectiveStart = searchFrom && searchFrom.getTime() > now.getTime() ? searchFrom : now;
+  const startYmd = formatInTimeZone(effectiveStart, timezone, "yyyy-MM-dd");
+  const rangeEnd = fromZonedTime(`${ymdPlusDays(startYmd, daysAhead + 1)}T00:00:00`, timezone);
 
   const freeBusyRes = await calendar.freebusy.query({
     requestBody: {
-      timeMin: now.toISOString(),
+      timeMin: effectiveStart.toISOString(),
       timeMax: rangeEnd.toISOString(),
       timeZone: timezone,
       items: [{ id: calendarId }],
@@ -68,7 +81,7 @@ export async function getFreeBusySlots({
   const slots: SlotSuggestion[] = [];
 
   for (let dayOffset = 0; dayOffset <= daysAhead && slots.length < MAX_SLOTS; dayOffset++) {
-    const dayYmd = ymdPlusDays(todayYmd, dayOffset);
+    const dayYmd = ymdPlusDays(startYmd, dayOffset);
     const weekday = weekdayKeyOf(dayYmd);
     const ranges = businessHours[weekday] ?? [];
 
@@ -82,6 +95,8 @@ export async function getFreeBusySlots({
         const slotStart = cursorStart;
         const slotEnd = new Date(slotStart.getTime() + durationMinutes * 60_000);
 
+        // Se compara contra `now` real (no `effectiveStart`) para que un
+        // `searchFrom` nunca cuele un hueco que ya paso.
         const isPast = slotStart.getTime() <= now.getTime();
         const isBusy = overlaps(slotStart.getTime(), slotEnd.getTime(), busy);
 

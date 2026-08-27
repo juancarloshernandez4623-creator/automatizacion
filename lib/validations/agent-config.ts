@@ -24,6 +24,7 @@ export const agentConfigFormSchema = z.object({
   // `businessInfo` (ver lib/types.ts) -- por eso vive a este nivel, junto a
   // los demas campos que la action reparte entre las dos tablas.
   organizationName: z.string().min(1, "El nombre del negocio no puede estar vacío"),
+  timezone: z.string().min(1, "Selecciona la zona horaria del negocio"),
   systemPrompt: z.string().min(1, "El prompt del sistema no puede estar vacío"),
   tone: z.string().min(1, "Describe el tono del agente"),
   businessInfo: z.object({

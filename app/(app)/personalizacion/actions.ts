@@ -44,7 +44,10 @@ export async function saveAgentConfig(
   // vive en `agent_configs`. Se hacen en paralelo, no hay dependencia entre
   // ellas -- si una falla, se reporta igual (ver abajo).
   const [orgResult, agentConfigResult] = await Promise.all([
-    supabase.from("organizations").update({ name: values.organizationName }).eq("id", organizationId),
+    supabase
+      .from("organizations")
+      .update({ name: values.organizationName, timezone: values.timezone })
+      .eq("id", organizationId),
     supabase.from("agent_configs").upsert(
       {
         organization_id: organizationId,

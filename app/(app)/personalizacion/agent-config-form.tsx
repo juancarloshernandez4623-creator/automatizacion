@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { CheckCircle, Plus, Trash, WarningCircle } from "@phosphor-icons/react";
 import {
+  COMMON_TIMEZONES,
   WEEKDAYS,
   WEEKDAY_LABELS,
   type AgentConfigFormValues,
@@ -238,7 +239,28 @@ export function AgentConfigForm({ initialValues }: { initialValues: AgentConfigF
         </section>
 
         <section className="rounded-xl border border-neutral-200 bg-white p-5">
-          <h2 className="mb-4 text-sm font-semibold text-neutral-900">Horario de atención</h2>
+          <h2 className="mb-1 text-sm font-semibold text-neutral-900">Horario de atención</h2>
+          <p className="mb-4 text-xs text-neutral-500">
+            El agente nunca ofrece citas fuera de estos horarios, y estos horarios se interpretan en
+            la zona horaria de abajo. Si no coincide con la de tu negocio, los horarios que ofrezca
+            el agente estarán desfasados respecto a tu Google Calendar real.
+          </p>
+
+          <label className={labelClass()}>Zona horaria del negocio</label>
+          <select
+            value={values.timezone}
+            onChange={(e) => setValues((prev) => ({ ...prev, timezone: e.target.value }))}
+            className={`${inputClass()} mb-5`}
+          >
+            {!COMMON_TIMEZONES.some((tz) => tz.value === values.timezone) && (
+              <option value={values.timezone}>{values.timezone}</option>
+            )}
+            {COMMON_TIMEZONES.map((tz) => (
+              <option key={tz.value} value={tz.value}>
+                {tz.label}
+              </option>
+            ))}
+          </select>
 
           <div className="flex flex-col gap-3">
             {WEEKDAYS.map((day) => (
