@@ -8,7 +8,7 @@ import type { AgentToolContext } from "./context";
 export function createGetAvailableSlotsTool(ctx: AgentToolContext) {
   return tool({
     description:
-      "SUGIERE hasta 3 horarios REALES disponibles para un servicio, calculados contra el horario de atencion del negocio y el calendario de Google (no inventes horarios que no vengan de esta tool). Esta tool es para cuando el cliente aun no ha dicho una hora concreta ('¿que horarios tenéis?'). Si el cliente propone SU PROPIA fecha/hora exacta ('¿puede ser a las 17:30?', 'el jueves a las 10'), usa check_slot_availability en su lugar -- esta tool nunca confirma un horario especifico, solo sugiere los mas cercanos. Si el cliente pide una fecha o rango futuro concreto para las sugerencias (ej. 'la semana que viene', 'en marzo'), pasa earliest_date -- si lo omites, la busqueda siempre arranca hoy y puede no llegar nunca a esa fecha si ya hay huecos libres antes.",
+      "SUGIERE hasta 3 horarios REALES disponibles para un servicio, calculados contra el horario de atencion del negocio y el calendario de Google (no inventes horarios que no vengan de esta tool). Esta tool es para cuando el cliente aun no ha dicho una hora concreta ('¿que horarios tenéis?', 'algo por la tarde'). Si el cliente propone SU PROPIA fecha/hora exacta ('¿puede ser a las 17:30?', 'el jueves a las 10'), usa check_slot_availability en su lugar -- esta tool nunca confirma un horario especifico, solo sugiere los mas cercanos. Si el cliente pide una fecha o rango futuro concreto para las sugerencias (ej. 'la semana que viene', 'en marzo'), pasa earliest_date -- si lo omites, la busqueda siempre arranca hoy y puede no llegar nunca a esa fecha si ya hay huecos libres antes. Si el cliente pide una franja del dia en vez de (o ademas de) un dia concreto ('por la tarde', 'a primera hora de la mañana', 'después de comer'), pasa earliest_time y/o latest_time -- si no lo haces, la tool puede devolver huecos de otra franja (normalmente de mañana, por ir primero cronologicamente) y parecera que 'no hay disponibilidad' cuando en realidad si la hay, solo que en otra franja.",
     inputSchema: z.object({
       service: z
         .string()
@@ -29,8 +29,22 @@ export function createGetAvailableSlotsTool(ctx: AgentToolContext) {
         .describe(
           "Fecha (yyyy-MM-dd, en la zona horaria del negocio) a partir de la cual buscar, cuando el cliente pidio explicitamente un dia, semana o mes futuro. Omitir para 'lo antes posible'. Si la fecha ya paso, se ignora y se busca desde ahora.",
         ),
+      earliest_time: z
+        .string()
+        .regex(/^\d{2}:\d{2}$/, "Formato HH:mm")
+        .optional()
+        .describe(
+          "Hora minima del dia (HH:mm, zona horaria del negocio) cuando el cliente pidio una franja como 'por la tarde' (usa un valor de sentido comun, ej. 14:00) o 'después de las 18:00'. Se aplica a todos los dias de la busqueda.",
+        ),
+      latest_time: z
+        .string()
+        .regex(/^\d{2}:\d{2}$/, "Formato HH:mm")
+        .optional()
+        .describe(
+          "Hora maxima del dia (HH:mm, zona horaria del negocio) cuando el cliente pidio algo como 'a primera hora de la mañana' (ej. 10:00) o 'antes de mediodía' (ej. 12:00). Se aplica a todos los dias de la busqueda.",
+        ),
     }),
-    execute: async ({ service, days_ahead, earliest_date }) => {
+    execute: async ({ service, days_ahead, earliest_date, earliest_time, latest_time }) => {
       const matchedService = ctx.services.find(
         (s) => s.name.trim().toLowerCase() === service.trim().toLowerCase(),
       );
@@ -63,13 +77,16 @@ export function createGetAvailableSlotsTool(ctx: AgentToolContext) {
         daysAhead: days_ahead ?? 7,
         timezone: ctx.organizationTimezone,
         searchFrom,
+        earliestTimeOfDay: earliest_time,
+        latestTimeOfDay: latest_time,
       });
 
       if (slots.length === 0) {
+        const scopeLabel = earliest_time || latest_time ? " en esa franja del día" : "";
         return {
           error: earliest_date
-            ? `No encontre horarios libres a partir del ${earliest_date} para ese servicio dentro de los siguientes ${days_ahead ?? 7} dias. Ofrece ampliar el rango o contactar al negocio directamente.`
-            : "No encontre horarios libres en los proximos dias para ese servicio. Ofrece contactar al negocio directamente o intenta con otro rango.",
+            ? `No encontre horarios libres${scopeLabel} a partir del ${earliest_date} para ese servicio dentro de los siguientes ${days_ahead ?? 7} dias. Ofrece ampliar el rango, probar otra franja del día, o contactar al negocio directamente.`
+            : `No encontre horarios libres${scopeLabel} en los proximos dias para ese servicio. Ofrece ampliar el rango, probar otra franja del día, o contactar al negocio directamente.`,
         };
       }
 

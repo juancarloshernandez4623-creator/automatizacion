@@ -40,6 +40,15 @@ function overlaps(aStart: number, aEnd: number, busy: BusyPeriod[]): boolean {
  * Por eso "agenda para la semana que viene" siempre devolvia horarios de
  * hoy. `searchFrom` nunca puede quedar en el pasado real (se recorta contra
  * `now`) para no ofrecer huecos que ya pasaron.
+ *
+ * `earliestTimeOfDay`/`latestTimeOfDay` (opcionales, "HH:mm") acotan cada
+ * dia de la busqueda a una franja del dia ("por la tarde", "a primera hora
+ * de la manana"). Sin esto, cuando el cliente pedia una franja generica en
+ * vez de una hora exacta, la tool devolvia los primeros huecos libres del
+ * dia sin importar la franja (normalmente de manana, por ir primero
+ * cronologicamente), y como esos huecos no encajaban con lo pedido, el
+ * agente terminaba concluyendo -- incorrectamente -- que no habia ninguna
+ * disponibilidad en absoluto.
  */
 export async function getFreeBusySlots({
   calendar,
@@ -49,6 +58,8 @@ export async function getFreeBusySlots({
   daysAhead = DEFAULT_DAYS_AHEAD,
   timezone,
   searchFrom,
+  earliestTimeOfDay,
+  latestTimeOfDay,
 }: {
   calendar: calendar_v3.Calendar;
   calendarId: string;
@@ -58,6 +69,10 @@ export async function getFreeBusySlots({
   timezone: string;
   /** Instante real a partir del cual buscar; por defecto "ahora". */
   searchFrom?: Date;
+  /** "HH:mm" -- descarta huecos que empiecen antes de esta hora del dia. */
+  earliestTimeOfDay?: string;
+  /** "HH:mm" -- descarta huecos que terminen despues de esta hora del dia. */
+  latestTimeOfDay?: string;
 }): Promise<SlotSuggestion[]> {
   const now = new Date();
   const effectiveStart = searchFrom && searchFrom.getTime() > now.getTime() ? searchFrom : now;
@@ -89,7 +104,21 @@ export async function getFreeBusySlots({
       if (slots.length >= MAX_SLOTS) break;
 
       let cursorStart = fromZonedTime(`${dayYmd}T${range.start}:00`, timezone);
-      const rangeEndDate = fromZonedTime(`${dayYmd}T${range.end}:00`, timezone);
+      let rangeEndDate = fromZonedTime(`${dayYmd}T${range.end}:00`, timezone);
+
+      // Interseccion con la franja del dia pedida (si la hay): recorta el
+      // tramo de este `range` de horario de atencion a lo que caiga dentro
+      // de [earliestTimeOfDay, latestTimeOfDay]. Si tras recortar no queda
+      // nada (ej. el negocio cierra a las 14:00 y se pidio "por la tarde"
+      // desde las 14:00), este `range` simplemente no aporta huecos ese dia.
+      if (earliestTimeOfDay) {
+        const earliestDate = fromZonedTime(`${dayYmd}T${earliestTimeOfDay}:00`, timezone);
+        if (earliestDate.getTime() > cursorStart.getTime()) cursorStart = earliestDate;
+      }
+      if (latestTimeOfDay) {
+        const latestDate = fromZonedTime(`${dayYmd}T${latestTimeOfDay}:00`, timezone);
+        if (latestDate.getTime() < rangeEndDate.getTime()) rangeEndDate = latestDate;
+      }
 
       while (cursorStart.getTime() + durationMinutes * 60_000 <= rangeEndDate.getTime()) {
         const slotStart = cursorStart;
