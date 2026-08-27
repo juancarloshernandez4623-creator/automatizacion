@@ -4,8 +4,8 @@ import { useState, useTransition } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { formatInTimeZone } from "date-fns-tz";
-import { CheckCircle, Phone, User, WarningCircle, X, XCircle } from "@phosphor-icons/react";
-import { updateAppointmentStatus } from "./actions";
+import { CheckCircle, Phone, Trash, User, WarningCircle, X, XCircle } from "@phosphor-icons/react";
+import { deleteAppointment, updateAppointmentStatus } from "./actions";
 
 export type AppointmentRow = {
   id: string;
@@ -38,6 +38,7 @@ export function AppointmentModal({
 }) {
   const [items, setItems] = useState(appointments);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
@@ -52,6 +53,26 @@ export function AppointmentModal({
         setItems((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)));
       }
       setPendingId(null);
+    });
+  }
+
+  function handleDelete(id: string) {
+    setError(null);
+    setPendingId(id);
+    startTransition(async () => {
+      const result = await deleteAppointment(id);
+      if (result?.error) {
+        setError(result.error);
+        setPendingId(null);
+      } else {
+        setItems((prev) => {
+          const next = prev.filter((a) => a.id !== id);
+          if (next.length === 0) onClose();
+          return next;
+        });
+        setConfirmingDeleteId(null);
+        setPendingId(null);
+      }
     });
   }
 
@@ -119,25 +140,58 @@ export function AppointmentModal({
                   {appt.notes && <p className="mt-1 text-neutral-500">{appt.notes}</p>}
                 </div>
 
-                {appt.status === "confirmed" && (
-                  <div className="flex gap-2 pt-1">
+                {confirmingDeleteId === appt.id ? (
+                  <div className="flex items-center gap-2 pt-1">
+                    <span className="text-xs text-neutral-600">¿Eliminar esta cita para siempre?</span>
                     <button
                       type="button"
                       disabled={isPending}
-                      onClick={() => handleStatusChange(appt.id, "completed")}
-                      className="flex items-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700 transition hover:bg-green-100 disabled:opacity-50"
+                      onClick={() => handleDelete(appt.id)}
+                      className="rounded-lg bg-red-600 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
                     >
-                      <CheckCircle size={14} weight="fill" />
-                      Completar
+                      Sí, eliminar
                     </button>
                     <button
                       type="button"
                       disabled={isPending}
-                      onClick={() => handleStatusChange(appt.id, "cancelled")}
-                      className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-100 disabled:opacity-50"
+                      onClick={() => setConfirmingDeleteId(null)}
+                      className="rounded-lg border border-neutral-200 px-2.5 py-1 text-xs font-medium text-neutral-600 transition hover:bg-neutral-50"
                     >
-                      <XCircle size={14} weight="fill" />
                       Cancelar
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {appt.status === "confirmed" && (
+                      <>
+                        <button
+                          type="button"
+                          disabled={isPending}
+                          onClick={() => handleStatusChange(appt.id, "completed")}
+                          className="flex items-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700 transition hover:bg-green-100 disabled:opacity-50"
+                        >
+                          <CheckCircle size={14} weight="fill" />
+                          Completar
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isPending}
+                          onClick={() => handleStatusChange(appt.id, "cancelled")}
+                          className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-100 disabled:opacity-50"
+                        >
+                          <XCircle size={14} weight="fill" />
+                          Cancelar
+                        </button>
+                      </>
+                    )}
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => setConfirmingDeleteId(appt.id)}
+                      className="flex items-center gap-1.5 rounded-lg border border-neutral-200 px-3 py-1.5 text-xs font-medium text-neutral-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                    >
+                      <Trash size={14} />
+                      Eliminar
                     </button>
                   </div>
                 )}

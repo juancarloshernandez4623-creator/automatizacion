@@ -75,3 +75,54 @@ export async function updateAppointmentStatus(
   revalidatePath("/citas");
   return null;
 }
+
+/**
+ * Elimina una cita por completo (fila de la BD + evento de Google Calendar
+ * si existe). A diferencia de `updateAppointmentStatus(..., 'cancelled')`
+ * -- que conserva el registro con status='cancelled' para historial -- esto
+ * la borra sin dejar rastro; pensado para corregir citas creadas por error
+ * (duplicados, datos de prueba, etc.), no para el flujo normal de
+ * cancelacion de un cliente.
+ */
+export async function deleteAppointment(appointmentId: string): Promise<UpdateAppointmentResult> {
+  const { supabase, organizationId } = await requireCurrentOrg();
+
+  const { data: appointment, error: fetchError } = await supabase
+    .from("appointments")
+    .select("id, google_event_id")
+    .eq("id", appointmentId)
+    .eq("organization_id", organizationId)
+    .single();
+
+  if (fetchError || !appointment) {
+    return { error: "No se encontró la cita." };
+  }
+
+  if (appointment.google_event_id) {
+    const calendarClient = await getOrgCalendarClient(supabase, organizationId);
+    if (calendarClient) {
+      try {
+        await deleteCalendarEvent({
+          calendar: calendarClient.calendar,
+          calendarId: calendarClient.calendarId,
+          eventId: appointment.google_event_id,
+        });
+      } catch {
+        // No bloquear el borrado interno por un fallo de Calendar.
+      }
+    }
+  }
+
+  const { error: deleteError } = await supabase
+    .from("appointments")
+    .delete()
+    .eq("id", appointmentId)
+    .eq("organization_id", organizationId);
+
+  if (deleteError) {
+    return { error: "No se pudo eliminar la cita." };
+  }
+
+  revalidatePath("/citas");
+  return null;
+}

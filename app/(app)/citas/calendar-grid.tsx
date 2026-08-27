@@ -110,13 +110,16 @@ export function CalendarGrid({
           const dayKey = format(day, "yyyy-MM-dd");
           const dayAppointments = appointmentsByDay.get(dayKey) ?? [];
           const inCurrentMonth = isSameMonth(day, currentMonth);
+          const MAX_VISIBLE = 2;
+          const visibleAppointments = dayAppointments.slice(0, MAX_VISIBLE);
+          const hiddenCount = dayAppointments.length - visibleAppointments.length;
 
           return (
             <button
               key={dayKey}
               type="button"
               onClick={() => dayAppointments.length > 0 && setSelectedDay(dayKey)}
-              className={`flex h-24 flex-col items-start gap-1 border-b border-r border-neutral-100 p-2 text-left transition last:border-r-0 ${
+              className={`flex h-28 flex-col items-start gap-1 border-b border-r border-neutral-100 p-2 text-left transition last:border-r-0 ${
                 inCurrentMonth ? "bg-white hover:bg-neutral-50" : "bg-neutral-50/50 text-neutral-300"
               } ${dayAppointments.length > 0 ? "cursor-pointer" : "cursor-default"}`}
             >
@@ -127,10 +130,21 @@ export function CalendarGrid({
               >
                 {format(day, "d")}
               </span>
-              {dayAppointments.length > 0 && (
-                <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[10px] font-medium text-brand-700">
-                  {dayAppointments.length} cita{dayAppointments.length === 1 ? "" : "s"}
-                </span>
+              {visibleAppointments.length > 0 && (
+                <div className="flex w-full flex-col gap-0.5">
+                  {visibleAppointments.map((appt) => (
+                    <span
+                      key={appt.id}
+                      className="w-full truncate rounded bg-brand-100 px-1.5 py-0.5 text-[10px] font-medium text-brand-700"
+                      title={`${formatInTimeZone(appt.starts_at, organizationTimezone, "HH:mm")} · ${appt.full_name}`}
+                    >
+                      {formatInTimeZone(appt.starts_at, organizationTimezone, "HH:mm")} {appt.full_name}
+                    </span>
+                  ))}
+                  {hiddenCount > 0 && (
+                    <span className="text-[10px] font-medium text-neutral-400">+{hiddenCount} más</span>
+                  )}
+                </div>
               )}
             </button>
           );
