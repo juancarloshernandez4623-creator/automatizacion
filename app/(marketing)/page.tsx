@@ -26,8 +26,8 @@ const CONTACT_PHONE_HREF = "tel:+34625529758";
 const WHATSAPP_HREF = "https://wa.me/34625529758";
 const CONTACT_EMAIL_DISPLAY = "info@usarecepta.com";
 const CONTACT_EMAIL_HREF = "mailto:info@usarecepta.com";
-const WEBSITE_DISPLAY = "www.usarecepta.com";
-const WEBSITE_HREF = "https://www.usarecepta.com";
+const WEBSITE_DISPLAY = "usarecepta.com";
+const WEBSITE_HREF = "https://usarecepta.com";
 
 const SOCIAL_LINKS = [
   {
