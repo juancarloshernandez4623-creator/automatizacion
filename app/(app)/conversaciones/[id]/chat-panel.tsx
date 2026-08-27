@@ -1,10 +1,12 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
-import { PaperPlaneRight, Robot, WarningCircle } from "@phosphor-icons/react";
+import { useRouter } from "next/navigation";
+import { PaperPlaneRight, Robot, Trash, WarningCircle } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 import { MessageBubble, type MessageBubbleData } from "@/components/chat/message-bubble";
 import { toggleBotActive, sendHumanMessage, type SendMessageActionState } from "./actions";
+import { deleteConversation } from "../actions";
 
 export function ChatPanel({
   conversationId,
@@ -24,6 +26,8 @@ export function ChatPanel({
   const [messages, setMessages] = useState(initialMessages);
   const [isBotActive, setIsBotActive] = useState(botActive);
   const [isTogglePending, startToggleTransition] = useTransition();
+  const [isDeletePending, startDeleteTransition] = useTransition();
+  const router = useRouter();
   const bottomRef = useRef<HTMLDivElement>(null);
   const boundSendHumanMessage = sendHumanMessage.bind(null, conversationId);
   const [state, formAction, isSending] = useActionState<SendMessageActionState, FormData>(
@@ -110,6 +114,20 @@ export function ChatPanel({
     });
   }
 
+  function handleDelete() {
+    // Igual que en la lista (conversation-list.tsx): borrado real e
+    // inmediato, con confirmacion porque no se puede deshacer. Si el
+    // contacto vuelve a escribir, upsertConversation le crea una
+    // conversacion nueva desde cero.
+    if (!window.confirm("¿Eliminar esta conversación? Se borrará todo su historial. Si el cliente vuelve a escribir, se creará una conversación nueva.")) {
+      return;
+    }
+    startDeleteTransition(async () => {
+      await deleteConversation(conversationId);
+      router.push("/conversaciones");
+    });
+  }
+
   return (
     <div className="flex h-full flex-col">
       <header className="flex items-center justify-between border-b border-neutral-200 bg-white px-5 py-3">
@@ -156,6 +174,16 @@ export function ChatPanel({
                 className={isBotActive ? "text-brand-600" : "text-amber-500"}
               />
             </span>
+          </button>
+
+          <button
+            type="button"
+            aria-label="Eliminar conversación"
+            disabled={isDeletePending}
+            onClick={handleDelete}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-neutral-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+          >
+            <Trash size={16} weight="bold" />
           </button>
         </div>
       </header>
