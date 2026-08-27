@@ -1,6 +1,7 @@
 import { addDays, endOfMonth, endOfWeek, format, startOfMonth, startOfWeek } from "date-fns";
 import { requireCurrentOrg } from "@/lib/auth/current-org";
 import { CalendarGrid } from "./calendar-grid";
+import { NewAppointmentModal } from "./new-appointment-modal";
 import type { AppointmentRow } from "./appointment-modal";
 
 function parseMonthParam(raw: string | undefined): string {
@@ -40,11 +41,14 @@ export default async function CitasPage({
 
   return (
     <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-neutral-900">Citas</h1>
-        <p className="text-sm text-neutral-500">
-          Todas las citas agendadas por el agente o manualmente, sincronizadas con Google Calendar.
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-neutral-900">Citas</h1>
+          <p className="text-sm text-neutral-500">
+            Todas las citas agendadas por el agente o manualmente, sincronizadas con Google Calendar.
+          </p>
+        </div>
+        <NewAppointmentModal />
       </div>
 
       <CalendarGrid
