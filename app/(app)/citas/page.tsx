@@ -2,6 +2,7 @@ import { addDays, endOfMonth, endOfWeek, format, startOfMonth, startOfWeek } fro
 import { requireCurrentOrg } from "@/lib/auth/current-org";
 import { CalendarGrid } from "./calendar-grid";
 import { NewAppointmentModal } from "./new-appointment-modal";
+import { ImportCalendarButton } from "./import-calendar-button";
 import type { AppointmentRow } from "./appointment-modal";
 
 function parseMonthParam(raw: string | undefined): string {
@@ -48,7 +49,10 @@ export default async function CitasPage({
             Todas las citas agendadas por el agente o manualmente, sincronizadas con Google Calendar.
           </p>
         </div>
-        <NewAppointmentModal />
+        <div className="flex items-start gap-2">
+          <ImportCalendarButton monthDate={monthDate} />
+          <NewAppointmentModal />
+        </div>
       </div>
 
       <CalendarGrid

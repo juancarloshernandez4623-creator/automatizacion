@@ -134,9 +134,11 @@ export function AppointmentModal({
                       </span>
                     )}
                   </span>
-                  <span className="flex items-center gap-1.5">
-                    <Phone size={13} /> {appt.phone}
-                  </span>
+                  {appt.phone && (
+                    <span className="flex items-center gap-1.5">
+                      <Phone size={13} /> {appt.phone}
+                    </span>
+                  )}
                   {appt.notes && <p className="mt-1 text-neutral-500">{appt.notes}</p>}
                 </div>
 

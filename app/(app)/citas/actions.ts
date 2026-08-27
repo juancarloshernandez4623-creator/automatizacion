@@ -1,12 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { addDays, endOfMonth, endOfWeek, startOfMonth, startOfWeek } from "date-fns";
 import { fromZonedTime } from "date-fns-tz";
 import { requireCurrentOrg } from "@/lib/auth/current-org";
 import { getOrgCalendarClient } from "@/lib/google/calendar-client";
 import { markCalendarEventCompleted } from "@/lib/google/update-event";
 import { deleteCalendarEvent } from "@/lib/google/delete-event";
 import { createCalendarEvent } from "@/lib/google/create-event";
+import { listCalendarEvents } from "@/lib/google/list-events";
 import { upsertContact } from "@/lib/whatsapp/persist-message";
 
 export type UpdateAppointmentResult = { error?: string } | null;
@@ -242,4 +244,95 @@ export async function deleteAppointment(appointmentId: string): Promise<UpdateAp
 
   revalidatePath("/citas");
   return null;
+}
+
+export type ImportCalendarResult = { error?: string; imported?: number };
+
+/**
+ * Trae al panel los eventos que se hayan anadido DIRECTAMENTE en Google
+ * Calendar (desde el movil, otro dispositivo, etc.) para el mes visible en
+ * `/citas`. El panel no consulta Calendar en cada carga -- es una
+ * importacion manual, a peticion, para que el negocio decida cuando
+ * traerlos en vez de que aparezcan solos (su Calendar puede tener eventos
+ * que no son citas de clientes).
+ *
+ * Cada evento nuevo se guarda con un contacto "sintetico" (wa_phone
+ * `calendar:<event_id>`, nunca choca con un telefono real que siempre
+ * empieza por "+") ya que un evento de Calendar no trae un contacto de
+ * WhatsApp asociado. Eventos ya importados (por `google_event_id`) se
+ * omiten, y los eventos de dia completo (sin hora) tambien se omiten por
+ * no encajar en el modelo de starts_at/ends_at con hora.
+ */
+export async function importFromGoogleCalendar(monthDate: string): Promise<ImportCalendarResult> {
+  const { supabase, organizationId } = await requireCurrentOrg();
+
+  const calendarClient = await getOrgCalendarClient(supabase, organizationId);
+  if (!calendarClient) {
+    return { error: "Este negocio no tiene Google Calendar conectado todavía." };
+  }
+
+  const currentMonth = new Date(`${monthDate}T00:00:00Z`);
+  const gridStart = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 1 });
+  const gridEnd = addDays(endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 1 }), 1);
+
+  let events;
+  try {
+    events = await listCalendarEvents({
+      calendar: calendarClient.calendar,
+      calendarId: calendarClient.calendarId,
+      timeMin: gridStart.toISOString(),
+      timeMax: gridEnd.toISOString(),
+    });
+  } catch {
+    return { error: "No se pudo consultar Google Calendar." };
+  }
+
+  const timedEvents = events.filter(
+    (e): e is typeof e & { id: string; startsAt: string; endsAt: string } =>
+      Boolean(e.id && e.startsAt && e.endsAt),
+  );
+  if (timedEvents.length === 0) {
+    return { imported: 0 };
+  }
+
+  const { data: existing } = await supabase
+    .from("appointments")
+    .select("google_event_id")
+    .eq("organization_id", organizationId)
+    .not("google_event_id", "is", null);
+
+  const existingIds = new Set((existing ?? []).map((a) => a.google_event_id));
+  const newEvents = timedEvents.filter((e) => !existingIds.has(e.id));
+
+  let imported = 0;
+  for (const event of newEvents) {
+    try {
+      const label = event.summary?.trim() || "(sin título)";
+      const contactId = await upsertContact(supabase, {
+        organizationId,
+        waPhone: `calendar:${event.id}`,
+        contactName: label,
+      });
+
+      const { error } = await supabase.from("appointments").insert({
+        organization_id: organizationId,
+        contact_id: contactId,
+        service: "Evento importado de Calendar",
+        starts_at: event.startsAt,
+        ends_at: event.endsAt,
+        google_event_id: event.id,
+        is_new_patient: null,
+        full_name: label,
+        phone: "",
+        notes: event.description,
+      });
+
+      if (!error) imported++;
+    } catch {
+      // Se sigue con el resto del lote aunque un evento falle.
+    }
+  }
+
+  revalidatePath("/citas");
+  return { imported };
 }
