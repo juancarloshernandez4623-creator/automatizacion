@@ -5,6 +5,7 @@ import { verifyWhatsAppSignature } from "@/lib/whatsapp/verify-signature";
 import { parseWhatsAppWebhookPayload } from "@/lib/whatsapp/parse-webhook-payload";
 import { upsertContact, upsertConversation, insertInboundMessage, insertOutboundMessage } from "@/lib/whatsapp/persist-message";
 import { sendWhatsAppMessage } from "@/lib/whatsapp/send-message";
+import { sendTypingIndicator } from "@/lib/whatsapp/send-typing-indicator";
 import { resolveTwilioOrganizationId } from "@/lib/twilio/resolve-org";
 import { sendTwilioWhatsAppMessage } from "@/lib/twilio/send-message";
 import { decrypt } from "@/lib/crypto";
@@ -181,6 +182,15 @@ async function handleMetaWebhook(request: NextRequest): Promise<NextResponse> {
           });
           continue;
         }
+
+        // Da sensacion de atencion inmediata mientras el agente procesa
+        // (puede tardar unos segundos si consulta disponibilidad en Google
+        // Calendar, etc.). No bloquea ni falla el flujo si Meta lo rechaza.
+        await sendTypingIndicator({
+          phoneNumberId: resolved.phoneNumberId,
+          accessToken,
+          messageId: message.waMessageId,
+        });
 
         const { replyText } = await runAgent({
           admin,

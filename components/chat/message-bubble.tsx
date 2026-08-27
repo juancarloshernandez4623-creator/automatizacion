@@ -40,7 +40,7 @@ export function MessageBubble({ message }: { message: MessageBubbleData }) {
             isInbound
               ? "rounded-bl-sm bg-neutral-100 text-neutral-900"
               : message.sender === "human"
-                ? "rounded-br-sm bg-brand-600 text-white"
+                ? "rounded-br-sm bg-neutral-800 text-white"
                 : "rounded-br-sm bg-brand-500 text-white"
           }`}
         >
