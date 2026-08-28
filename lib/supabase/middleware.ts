@@ -2,7 +2,9 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/lib/database.types";
 
-const PUBLIC_PATHS = ["/login", "/signup", "/callback", "/"];
+// No hay /signup: nadie se registra solo, solo /login (con codigo de acceso
+// o, para el administrador, correo+contraseña).
+const PUBLIC_PATHS = ["/login", "/callback", "/"];
 
 /** Si Supabase Auth no responde en este tiempo, se trata como "no se pudo
  * verificar sesion" en vez de dejar la peticion colgada. Sin esto, una

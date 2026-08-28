@@ -387,15 +387,15 @@ export type Database = {
           },
         ];
       };
-      signup_invites: {
+      access_codes: {
         Row: {
           id: string;
           code: string;
           label: string | null;
           created_at: string;
           expires_at: string | null;
-          used_by: string | null;
-          used_at: string | null;
+          login_email: string | null;
+          user_id: string | null;
           revoked_at: string | null;
         };
         Insert: {
@@ -404,8 +404,8 @@ export type Database = {
           label?: string | null;
           created_at?: string;
           expires_at?: string | null;
-          used_by?: string | null;
-          used_at?: string | null;
+          login_email?: string | null;
+          user_id?: string | null;
           revoked_at?: string | null;
         };
         Update: {
@@ -414,15 +414,15 @@ export type Database = {
           label?: string | null;
           created_at?: string;
           expires_at?: string | null;
-          used_by?: string | null;
-          used_at?: string | null;
+          login_email?: string | null;
+          user_id?: string | null;
           revoked_at?: string | null;
         };
         Relationships: [
           {
-            foreignKeyName: "signup_invites_used_by_fkey";
-            columns: ["used_by"];
-            isOneToOne: false;
+            foreignKeyName: "access_codes_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: true;
             referencedRelation: "users";
             referencedColumns: ["id"];
           },

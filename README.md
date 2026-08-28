@@ -104,6 +104,10 @@ pnpm install
    0010_appointments.sql
    0011_rls_policies.sql
    0012_signup_trigger.sql
+   0013_realtime_publication.sql
+   0014_revert_replica_identity_full.sql
+   0015_signup_invites.sql
+   0016_permanent_access_codes.sql
    ```
    (Si tienes la Supabase CLI instalada localmente, `supabase db push`
    aplica los archivos de `supabase/migrations/` en orden automáticamente.)
@@ -147,9 +151,13 @@ el detalle de dónde obtener cada una. Resumen:
 pnpm dev
 ```
 
-Visita `http://localhost:3000`, crea una cuenta en `/signup` (esto dispara
-el trigger `private.handle_new_user()`, que crea tu organización y perfil
-automáticamente).
+Visita `http://localhost:3000`. No hay registro abierto: entra en
+`/admin/invites` con la cuenta cuyo email coincide con
+`PLATFORM_ADMIN_EMAIL` (créala directamente en el dashboard de Supabase la
+primera vez) y da de alta un cliente de prueba — esto crea la cuenta
+completa (dispara `private.handle_new_user()`, que crea la organización y
+el perfil automáticamente) y te da un código de acceso permanente para
+entrar en `/login`.
 
 ## Configurar Meta (WhatsApp Cloud API)
 
@@ -263,7 +271,8 @@ in-line con de dónde obtenerla.
 web/
 ├── app/
 │   ├── (marketing)/          Landing pública
-│   ├── (auth)/                login, signup, callback
+│   ├── (auth)/                login (codigo de acceso / admin), callback
+│   ├── admin/invites/           panel del dueño: da de alta clientes
 │   ├── (app)/                  dashboard, citas, conversaciones,
 │   │                            personalizacion, integraciones
 │   └── api/

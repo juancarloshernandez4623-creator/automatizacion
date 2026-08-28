@@ -5,10 +5,12 @@
 --
 -- IMPORTANTE: este seed NO crea un usuario de auth.users (crear un usuario
 -- de Supabase Auth completo a mano requiere columnas internas fragiles entre
--- versiones). Para probar la app como usuario logueado, registrate desde
--- /signup: el trigger private.handle_new_user() (migracion 0012) crea tu
--- propia organizacion + agent_configs por defecto automaticamente. Este seed
--- es solo para tener una organizacion "de sobra" con datos de ejemplo,
+-- versiones). No hay /signup: para probar la app como usuario logueado, da
+-- de alta un cliente de prueba desde /admin/invites (necesita
+-- PLATFORM_ADMIN_EMAIL seteada) e inicia sesion en /login con el codigo que
+-- te da -- el trigger private.handle_new_user() (migracion 0012) crea la
+-- organizacion + agent_configs por defecto automaticamente. Este seed es
+-- solo para tener una organizacion "de sobra" con datos de ejemplo,
 -- consultable via el service_role client (ej. en tests o scripts).
 
 insert into public.organizations (id, name, slug, timezone)

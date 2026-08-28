@@ -11,8 +11,7 @@ export type InviteListItem = {
   label: string | null;
   created_at: string;
   expires_at: string | null;
-  used_by: string | null;
-  used_at: string | null;
+  user_id: string | null;
   revoked_at: string | null;
 };
 
@@ -23,13 +22,10 @@ function inviteStatus(invite: InviteListItem): {
   if (invite.revoked_at) {
     return { label: "Revocado", className: "bg-neutral-100 text-neutral-500" };
   }
-  if (invite.used_at) {
-    return { label: "Usado", className: "bg-brand-50 text-brand-700" };
-  }
   if (invite.expires_at && new Date(invite.expires_at).getTime() < Date.now()) {
     return { label: "Caducado", className: "bg-amber-50 text-amber-700" };
   }
-  return { label: "Sin usar", className: "bg-green-50 text-green-700" };
+  return { label: "Activo", className: "bg-green-50 text-green-700" };
 }
 
 function CreateSubmitButton() {
@@ -40,20 +36,22 @@ function CreateSubmitButton() {
       disabled={pending}
       className="rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
     >
-      {pending ? "Generando…" : "Generar código"}
+      {pending ? "Creando cuenta…" : "Dar de alta"}
     </button>
   );
 }
 
-function CopyLinkButton({ code }: { code: string }) {
+// Ya no hay un enlace a /signup que copiar (no existe): esto copia el
+// codigo tal cual, listo para pegarlo en un mensaje de WhatsApp/email al
+// cliente junto con la URL de /login.
+function CopyCodeButton({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
-  const link = `${process.env.NEXT_PUBLIC_APP_URL}/signup?code=${code}`;
 
   return (
     <button
       type="button"
       onClick={async () => {
-        await navigator.clipboard.writeText(link);
+        await navigator.clipboard.writeText(code);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       }}
@@ -64,7 +62,7 @@ function CopyLinkButton({ code }: { code: string }) {
       ) : (
         <Copy size={13} weight="bold" />
       )}
-      {copied ? "Copiado" : "Copiar enlace"}
+      {copied ? "Copiado" : "Copiar código"}
     </button>
   );
 }
@@ -74,7 +72,11 @@ export function InviteManager({ initialInvites }: { initialInvites: InviteListIt
   const [isRevokePending, startRevokeTransition] = useTransition();
 
   function handleRevoke(id: string) {
-    if (!window.confirm("¿Revocar este código? Ya no se podrá usar para registrar una cuenta.")) {
+    if (
+      !window.confirm(
+        "¿Revocar este código? Se bloqueará también la cuenta del cliente: dejará de poder iniciar sesión.",
+      )
+    ) {
       return;
     }
     startRevokeTransition(async () => {
@@ -90,13 +92,38 @@ export function InviteManager({ initialInvites }: { initialInvites: InviteListIt
       >
         <div className="flex gap-3">
           <div className="flex flex-1 flex-col gap-1.5">
+            <label htmlFor="fullName" className="text-xs font-medium text-neutral-600">
+              Nombre del cliente
+            </label>
+            <input
+              id="fullName"
+              name="fullName"
+              placeholder="Ej. Ana Martínez"
+              className="rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+            />
+          </div>
+          <div className="flex flex-1 flex-col gap-1.5">
+            <label htmlFor="organizationName" className="text-xs font-medium text-neutral-600">
+              Nombre del negocio
+            </label>
+            <input
+              id="organizationName"
+              name="organizationName"
+              placeholder="Ej. Clínica Dental Sonrisas"
+              className="rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <div className="flex flex-1 flex-col gap-1.5">
             <label htmlFor="label" className="text-xs font-medium text-neutral-600">
-              Para quién es (nota interna, opcional)
+              Nota interna (opcional)
             </label>
             <input
               id="label"
               name="label"
-              placeholder="Ej. Clínica Dental Sonrisas"
+              placeholder="Solo la ves tú en esta lista"
               className="rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
             />
           </div>
@@ -122,11 +149,14 @@ export function InviteManager({ initialInvites }: { initialInvites: InviteListIt
           <div className="flex items-center justify-between gap-3 rounded-lg bg-brand-50 px-3 py-2.5">
             <div>
               <p className="text-sm font-semibold text-brand-800">
-                Código creado: <span className="font-mono">{state.createdCode}</span>
+                Cuenta creada — código: <span className="font-mono">{state.createdCode}</span>
               </p>
-              <p className="text-xs text-brand-700">Compártelo con el cliente antes de que lo pierdas de vista.</p>
+              <p className="text-xs text-brand-700">
+                Guárdalo ahora: es la contraseña permanente de esta cuenta y no se vuelve a
+                mostrar entero después.
+              </p>
             </div>
-            <CopyLinkButton code={state.createdCode} />
+            <CopyCodeButton code={state.createdCode} />
           </div>
         )}
 
@@ -150,13 +180,13 @@ export function InviteManager({ initialInvites }: { initialInvites: InviteListIt
             {initialInvites.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-neutral-400">
-                  Todavía no has generado ningún código.
+                  Todavía no has dado de alta ningún cliente.
                 </td>
               </tr>
             )}
             {initialInvites.map((invite) => {
               const status = inviteStatus(invite);
-              const canRevoke = !invite.used_at && !invite.revoked_at;
+              const canRevoke = !invite.revoked_at;
               return (
                 <tr key={invite.id}>
                   <td className="px-4 py-2.5 font-mono text-neutral-900">{invite.code}</td>
@@ -171,7 +201,7 @@ export function InviteManager({ initialInvites }: { initialInvites: InviteListIt
                   </td>
                   <td className="px-4 py-2.5">
                     <div className="flex items-center justify-end gap-2">
-                      {status.label === "Sin usar" && <CopyLinkButton code={invite.code} />}
+                      <CopyCodeButton code={invite.code} />
                       {canRevoke && (
                         <button
                           type="button"

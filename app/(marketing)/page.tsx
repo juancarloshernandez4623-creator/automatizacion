@@ -311,14 +311,11 @@ export default function MarketingPage() {
             >
               <WhatsappLogo size={18} weight="fill" />
             </a>
-            <Link href="/login" className="text-ink-300 hover:text-ink-50">
-              Iniciar sesión
-            </Link>
             <Link
-              href="/signup"
+              href="/login"
               className="rounded-lg bg-ink-50 px-4 py-2 font-semibold text-noir-950 hover:bg-white"
             >
-              Crear cuenta
+              Iniciar sesión
             </Link>
           </nav>
         </div>
