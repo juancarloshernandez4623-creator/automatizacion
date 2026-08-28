@@ -20,8 +20,19 @@ export async function isPlatformAdmin(): Promise<boolean> {
   if (!adminEmail) return false;
 
   const supabase = await createClient();
-  const authResult = await checkAuth(supabase);
-  if (authResult.status !== "authenticated") return false;
 
-  return authResult.user.email?.toLowerCase() === adminEmail.toLowerCase();
+  // checkAuth() lanza AuthCheckFailedError si Supabase Auth falla o tarda
+  // (ver lib/supabase/auth-check.ts) -- requireCurrentOrg() y AppLayout
+  // capturan eso para mostrar un mensaje de "reintenta" en las rutas del
+  // dashboard, pero esta pagina es distinta: si algo falla al comprobar
+  // quien eres, el default seguro es "no eres el admin" (se ve un 404
+  // limpio via notFound()), nunca dejar que la excepcion reviente hasta la
+  // pantalla de error generica de la app.
+  try {
+    const authResult = await checkAuth(supabase);
+    if (authResult.status !== "authenticated") return false;
+    return authResult.user.email?.toLowerCase() === adminEmail.toLowerCase();
+  } catch {
+    return false;
+  }
 }
