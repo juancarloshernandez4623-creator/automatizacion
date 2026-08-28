@@ -387,6 +387,47 @@ export type Database = {
           },
         ];
       };
+      signup_invites: {
+        Row: {
+          id: string;
+          code: string;
+          label: string | null;
+          created_at: string;
+          expires_at: string | null;
+          used_by: string | null;
+          used_at: string | null;
+          revoked_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          code: string;
+          label?: string | null;
+          created_at?: string;
+          expires_at?: string | null;
+          used_by?: string | null;
+          used_at?: string | null;
+          revoked_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          code?: string;
+          label?: string | null;
+          created_at?: string;
+          expires_at?: string | null;
+          used_by?: string | null;
+          used_at?: string | null;
+          revoked_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "signup_invites_used_by_fkey";
+            columns: ["used_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {

@@ -18,6 +18,11 @@ export const signupSchema = z.object({
   organizationName: z.string().trim().min(1, "El nombre del negocio es requerido"),
   email: z.string().trim().email("Correo invalido"),
   password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+  // Registro cerrado: el servicio es de pago, asi que /signup exige un
+  // codigo de invitacion generado desde /admin/invites (ver
+  // app/(auth)/signup/actions.ts para la validacion real contra la tabla
+  // signup_invites -- aqui solo se comprueba que no venga vacio).
+  code: z.string().trim().min(1, "El código de acceso es obligatorio"),
 });
 
 export type SignupInput = z.infer<typeof signupSchema>;
