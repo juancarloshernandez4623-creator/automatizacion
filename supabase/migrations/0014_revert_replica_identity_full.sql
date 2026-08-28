@@ -1,0 +1,25 @@
+-- Revierte `REPLICA IDENTITY FULL` de la migracion 0013 a `DEFAULT` (el valor
+-- normal de cualquier tabla con primary key) en `messages` y `conversations`.
+--
+-- Motivo: `FULL` hace que Postgres escriba la fila COMPLETA en el WAL (write
+-- ahead log) en cada UPDATE/DELETE de esas tablas -- y `conversations` recibe
+-- un UPDATE de `last_message_at` en CADA mensaje de WhatsApp entrante o
+-- saliente. Si el consumidor logico de ese WAL (el proceso de Supabase que
+-- alimenta Realtime) no lo vacia al mismo ritmo, el WAL crece sin limite y
+-- puede degradar el rendimiento de TODA la base de datos -- no solo de estas
+-- dos tablas. Los sintomas de una degradacion asi (todo lento, sesiones que
+-- fallan tras varias peticiones seguidas) son indistinguibles "desde fuera"
+-- de una incidencia de la propia plataforma de Supabase, que es justo lo que
+-- se penso que estaba pasando aqui.
+--
+-- `DEFAULT` sigue siendo SUFICIENTE para todo lo que usa hoy la app:
+-- Postgres siempre incluye las columnas de la primary key en el "old record"
+-- de un UPDATE/DELETE bajo `DEFAULT` (no hace falta `FULL` para eso) -- y
+-- eso es exactamente lo unico que lee `conversation-list.tsx` de
+-- `payload.old` (el campo `id`, para saber que conversacion borrar de la
+-- lista en tiempo real). Ningun codigo de la app depende de ver columnas
+-- ADEMAS de la primary key en `payload.old`.
+--
+-- Referencia: https://www.postgresql.org/docs/current/sql-altertable.html#SQL-CREATETABLE-REPLICA-IDENTITY
+alter table public.messages replica identity default;
+alter table public.conversations replica identity default;
