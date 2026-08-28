@@ -10,8 +10,16 @@ const PUBLIC_PATHS = ["/login", "/callback", "/"];
  * verificar sesion" en vez de dejar la peticion colgada. Sin esto, una
  * incidencia de Supabase (lento o caido) tumba TODO el sitio con un
  * MIDDLEWARE_INVOCATION_TIMEOUT de Vercel -- incluida la pagina publica de
- * login, que ni siquiera necesita sesion para mostrarse. */
-const AUTH_CHECK_TIMEOUT_MS = 4000;
+ * login, que ni siquiera necesita sesion para mostrarse.
+ *
+ * Subido de 4000 a 8000ms (28 ago 2026): incidencia activa de Supabase
+ * ("Increased response times for requests" / API Gateway degradado, ver
+ * status.supabase.com) causando que peticiones que normalmente tardan
+ * <1s tarden varios segundos -- con el margen anterior, eso se
+ * interpretaba como timeout y forzaba un cierre de sesion de mas.
+ * Revertir a un valor mas bajo cuando Supabase marque esas incidencias
+ * como resueltas (siguen "Identified" a fecha de este cambio). */
+const AUTH_CHECK_TIMEOUT_MS = 8000;
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some(

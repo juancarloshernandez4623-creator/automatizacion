@@ -3,8 +3,13 @@ import type { Database } from "@/lib/database.types";
 
 /** Mismo valor que en `lib/supabase/middleware.ts` -- si Supabase Auth no
  * responde en este tiempo, se trata como "no se pudo verificar" en vez de
- * dejar la request colgada indefinidamente. */
-const AUTH_CHECK_TIMEOUT_MS = 4000;
+ * dejar la request colgada indefinidamente.
+ *
+ * Subido de 4000 a 8000ms (28 ago 2026) por la misma incidencia activa de
+ * Supabase que el comentario de middleware.ts explica con mas detalle:
+ * revertir cuando esas incidencias se marquen resueltas en
+ * status.supabase.com. */
+const AUTH_CHECK_TIMEOUT_MS = 8000;
 
 /**
  * Se lanza cuando NO se pudo determinar con certeza si hay sesion o no --
