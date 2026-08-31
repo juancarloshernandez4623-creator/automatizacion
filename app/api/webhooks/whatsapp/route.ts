@@ -20,6 +20,15 @@ import type { Json } from "@/lib/database.types";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// Sin esto, Vercel mata la funcion con el limite por defecto (muy corto),
+// cortando el procesamiento de `after()` a la mitad -- el indicador de
+// "escribiendo" alcanza a salir (ocurre temprano) pero el agente nunca llega
+// a mandar la respuesta real, porque el runtime lo interrumpe antes. El
+// agente + Google Calendar pueden tardar bastante en el peor caso (se ha
+// visto ~124s), asi que se pide el maximo permitido en Hobby; en Pro se
+// puede subir mas si sigue sin ser suficiente (ver comentario en el chat/PR).
+export const maxDuration = 60;
+
 /**
  * GET: handshake de verificacion del webhook de Meta. Corre una vez por
  * alta en el dashboard de Meta (no por mensaje). El verify_token se busca
