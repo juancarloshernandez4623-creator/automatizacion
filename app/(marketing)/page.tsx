@@ -785,6 +785,14 @@ export default function MarketingPage() {
               © {new Date().getFullYear()} Recepta Technologies. Todos los derechos
               reservados.
             </p>
+            <div className="flex items-center gap-4 text-xs text-ink-500">
+              <Link href="/privacidad" className="hover:text-brand-400">
+                Política de Privacidad
+              </Link>
+              <Link href="/terminos" className="hover:text-brand-400">
+                Condiciones del Servicio
+              </Link>
+            </div>
           </div>
         </div>
       </footer>
