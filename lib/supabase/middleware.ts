@@ -4,7 +4,14 @@ import type { Database } from "@/lib/database.types";
 
 // No hay /signup: nadie se registra solo, solo /login (con codigo de acceso
 // o, para el administrador, correo+contraseña).
-const PUBLIC_PATHS = ["/login", "/callback", "/"];
+//
+// /privacidad y /terminos tambien son publicas a proposito: son las paginas
+// legales enlazadas desde Google Auth Platform (Politica de Privacidad /
+// Condiciones del Servicio) -- si no estuvieran aqui, cualquier visitante
+// sin sesion (incluido el propio revisor de Google) chocaria con un
+// redirect a /login en vez de ver el contenido, que es exactamente el bug
+// que este comentario documenta haber corregido.
+const PUBLIC_PATHS = ["/login", "/callback", "/", "/privacidad", "/terminos"];
 
 /** Si Supabase Auth no responde en este tiempo, se trata como "no se pudo
  * verificar sesion" en vez de dejar la peticion colgada. Sin esto, una
