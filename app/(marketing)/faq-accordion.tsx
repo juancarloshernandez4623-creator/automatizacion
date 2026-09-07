@@ -15,7 +15,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "¿Cuánto tardan en poner el servicio en marcha?",
-    a: "La puesta en marcha (conectar tu WhatsApp Business y tu Google Calendar, y configurar el agente) se hace en la sesión inicial incluida en la instalación. En un día tienes todo probado y activo.",
+    a: "La puesta en marcha (conectar tu WhatsApp Business y tu Google Calendar, y configurar el agente) se hace en la sesión inicial incluida en la instalación. En 48 horas tienes todo probado y activo.",
   },
   {
     q: "¿Qué pasa si preguntan algo que el agente no sabe?",
