@@ -96,3 +96,43 @@ body {
 .marketing .font-mono-brand {
   font-family: var(--font-mono-brand), "SFMono-Regular", Consolas, monospace;
 }
+
+/* Prosa de las paginas legales (/privacidad, /terminos) -- mismo tema
+   .marketing pero pensado para texto corrido largo en vez de bloques de
+   marketing: jerarquia de encabezados clara, listas con marcador visible,
+   ancho de linea legible via max-w-3xl en el layout que lo envuelve. */
+.legal-content h2 {
+  margin-top: 2.5rem;
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--color-ink-50);
+}
+.legal-content h2:first-child {
+  margin-top: 0;
+}
+.legal-content p {
+  margin-top: 1rem;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--color-ink-300);
+}
+.legal-content ul {
+  margin-top: 1rem;
+  list-style: disc;
+  padding-inline-start: 1.25rem;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--color-ink-300);
+}
+.legal-content li + li {
+  margin-top: 0.375rem;
+}
+.legal-content strong {
+  color: var(--color-ink-50);
+  font-weight: 600;
+}
+.legal-content a {
+  color: var(--color-brand-400);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
