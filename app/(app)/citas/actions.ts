@@ -9,6 +9,7 @@ import { markCalendarEventCompleted } from "@/lib/google/update-event";
 import { deleteCalendarEvent } from "@/lib/google/delete-event";
 import { createCalendarEvent } from "@/lib/google/create-event";
 import { listCalendarEvents } from "@/lib/google/list-events";
+import { IMPORTED_SERVICE, syncLinkedAppointments } from "@/lib/google/sync-appointments";
 import { upsertContact } from "@/lib/whatsapp/persist-message";
 
 export type UpdateAppointmentResult = { error?: string } | null;
@@ -246,7 +247,50 @@ export async function deleteAppointment(appointmentId: string): Promise<UpdateAp
   return null;
 }
 
-export type ImportCalendarResult = { error?: string; imported?: number };
+/** Rango que pinta la cuadricula de /citas para un mes (semanas completas, lunes a lunes). */
+function monthGridRange(monthDate: string): { gridStart: Date; gridEnd: Date } | null {
+  if (!/^\d{4}-\d{2}-01$/.test(monthDate)) return null;
+  const currentMonth = new Date(`${monthDate}T00:00:00Z`);
+  const gridStart = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 1 });
+  const gridEnd = addDays(endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 1 }), 1);
+  return { gridStart, gridEnd };
+}
+
+export type SyncCalendarResult = { changed: number };
+
+/**
+ * Sincronizacion en segundo plano mientras /citas esta abierta (la llama
+ * CalendarAutoSync cada minuto y al volver a la pestana): aplica a las
+ * citas ya enlazadas los cambios hechos directamente en Google Calendar
+ * desde otro dispositivo. Devuelve cuantas citas cambiaron para que el
+ * cliente solo refresque la pagina cuando haga falta. Nunca lanza: un fallo
+ * de Google se reintenta en el siguiente ciclo.
+ */
+export async function syncCalendarMonth(monthDate: string): Promise<SyncCalendarResult> {
+  const range = monthGridRange(monthDate);
+  if (!range) return { changed: 0 };
+
+  const { supabase, organizationId } = await requireCurrentOrg();
+  const calendarClient = await getOrgCalendarClient(supabase, organizationId);
+  if (!calendarClient) return { changed: 0 };
+
+  try {
+    const { updated, cancelled } = await syncLinkedAppointments({
+      supabase,
+      organizationId,
+      calendarClient,
+      rangeStart: range.gridStart,
+      rangeEnd: range.gridEnd,
+    });
+    const changed = updated + cancelled;
+    if (changed > 0) revalidatePath("/citas");
+    return { changed };
+  } catch {
+    return { changed: 0 };
+  }
+}
+
+export type ImportCalendarResult = { error?: string; imported?: number; updated?: number };
 
 /**
  * Trae al panel los eventos que se hayan anadido DIRECTAMENTE en Google
@@ -262,8 +306,16 @@ export type ImportCalendarResult = { error?: string; imported?: number };
  * WhatsApp asociado. Eventos ya importados (por `google_event_id`) se
  * omiten, y los eventos de dia completo (sin hora) tambien se omiten por
  * no encajar en el modelo de starts_at/ends_at con hora.
+ *
+ * Antes de importar, sincroniza tambien las citas ya enlazadas (ver
+ * syncLinkedAppointments): asi el boton sirve ademas como "refrescar ahora"
+ * si se acaba de mover o borrar un evento desde el movil.
  */
 export async function importFromGoogleCalendar(monthDate: string): Promise<ImportCalendarResult> {
+  const range = monthGridRange(monthDate);
+  if (!range) return { error: "Mes inválido." };
+  const { gridStart, gridEnd } = range;
+
   const { supabase, organizationId } = await requireCurrentOrg();
 
   const calendarClient = await getOrgCalendarClient(supabase, organizationId);
@@ -271,9 +323,19 @@ export async function importFromGoogleCalendar(monthDate: string): Promise<Impor
     return { error: "Este negocio no tiene Google Calendar conectado todavía." };
   }
 
-  const currentMonth = new Date(`${monthDate}T00:00:00Z`);
-  const gridStart = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 1 });
-  const gridEnd = addDays(endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 1 }), 1);
+  let updated = 0;
+  try {
+    const sync = await syncLinkedAppointments({
+      supabase,
+      organizationId,
+      calendarClient,
+      rangeStart: gridStart,
+      rangeEnd: gridEnd,
+    });
+    updated = sync.updated + sync.cancelled;
+  } catch {
+    return { error: "No se pudo consultar Google Calendar." };
+  }
 
   let events;
   try {
@@ -292,7 +354,8 @@ export async function importFromGoogleCalendar(monthDate: string): Promise<Impor
       Boolean(e.id && e.startsAt && e.endsAt),
   );
   if (timedEvents.length === 0) {
-    return { imported: 0 };
+    if (updated > 0) revalidatePath("/citas");
+    return { imported: 0, updated };
   }
 
   const { data: existing } = await supabase
@@ -317,7 +380,7 @@ export async function importFromGoogleCalendar(monthDate: string): Promise<Impor
       const { error } = await supabase.from("appointments").insert({
         organization_id: organizationId,
         contact_id: contactId,
-        service: "Evento importado de Calendar",
+        service: IMPORTED_SERVICE,
         starts_at: event.startsAt,
         ends_at: event.endsAt,
         google_event_id: event.id,
@@ -334,5 +397,5 @@ export async function importFromGoogleCalendar(monthDate: string): Promise<Impor
   }
 
   revalidatePath("/citas");
-  return { imported };
+  return { imported, updated };
 }

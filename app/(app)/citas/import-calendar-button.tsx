@@ -19,11 +19,15 @@ export function ImportCalendarButton({ monthDate }: { monthDate: string }) {
         return;
       }
       const count = result.imported ?? 0;
+      const updated = result.updated ?? 0;
+      const parts: string[] = [];
+      if (count > 0) parts.push(`Se importaron ${count} evento${count === 1 ? "" : "s"}.`);
+      if (updated > 0) parts.push(`Se actualizaron ${updated} cita${updated === 1 ? "" : "s"}.`);
       setMessage({
-        text: count > 0 ? `Se importaron ${count} evento${count === 1 ? "" : "s"}.` : "No hay eventos nuevos en Calendar para este mes.",
+        text: parts.length > 0 ? parts.join(" ") : "Todo al día: no hay cambios en Calendar para este mes.",
         isError: false,
       });
-      if (count > 0) router.refresh();
+      if (count > 0 || updated > 0) router.refresh();
     });
   }
 
