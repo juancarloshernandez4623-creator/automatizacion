@@ -16,6 +16,22 @@ export type UpdateAppointmentResult = { error?: string } | null;
 
 const UNIQUE_VIOLATION = "23505";
 
+/**
+ * Deja el telefono de una cita manual en formato internacional, para que el
+ * recordatorio por WhatsApp pueda enviarse (Meta exige el prefijo de pais).
+ * Solo se anade +34 automaticamente a negocios en España y a numeros
+ * españoles de 9 cifras (empiezan por 6, 7, 8 o 9); "0034..." pasa a
+ * "+34...". En cualquier otro caso el numero se deja como lo escribieron.
+ */
+function normalizePhone(raw: string, timezone: string): string {
+  const compact = raw.replace(/[\s().-]/g, "");
+  if (compact.startsWith("+")) return compact;
+  if (compact.startsWith("00")) return `+${compact.slice(2)}`;
+  const isSpain = timezone === "Europe/Madrid" || timezone === "Atlantic/Canary";
+  if (isSpain && /^[6789]\d{8}$/.test(compact)) return `+34${compact}`;
+  return raw;
+}
+
 export type CreateManualAppointmentInput = {
   fullName: string;
   phone: string;
@@ -41,7 +57,7 @@ export async function createManualAppointment(
   input: CreateManualAppointmentInput,
 ): Promise<UpdateAppointmentResult> {
   const fullName = input.fullName.trim();
-  const phone = input.phone.trim();
+  let phone = input.phone.trim();
   const service = input.service.trim();
 
   if (!fullName || !phone || !service) {
@@ -62,6 +78,7 @@ export async function createManualAppointment(
     .eq("id", organizationId)
     .single();
   const organizationTimezone = org?.timezone ?? "America/Mexico_City";
+  phone = normalizePhone(phone, organizationTimezone);
 
   const startsAtDate = fromZonedTime(`${input.date}T${input.time}:00`, organizationTimezone);
   if (Number.isNaN(startsAtDate.getTime())) {

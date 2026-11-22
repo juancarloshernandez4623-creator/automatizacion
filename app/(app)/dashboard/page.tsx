@@ -8,7 +8,9 @@ import {
   getDailyActivity,
   getRecentConversations,
   getTodaysAppointments,
+  getTomorrowAttendance,
 } from "@/lib/dashboard/queries";
+import { ConfirmAttendanceButton } from "./confirm-attendance-button";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { ConversationsChart } from "@/components/dashboard/conversations-chart";
 
@@ -38,12 +40,14 @@ export default async function DashboardPage() {
     dailyActivity,
     recentConversations,
     todaysAppointments,
+    tomorrow,
   ] = await Promise.all([
     getConversationsLast30Days(supabase, organizationId),
     getAppointmentsThisWeek(supabase, organizationId, timezone),
     getDailyActivity(supabase, organizationId, timezone),
     getRecentConversations(supabase, organizationId, 5),
     getTodaysAppointments(supabase, organizationId, timezone),
+    getTomorrowAttendance(supabase, organizationId, timezone),
   ]);
 
   return (
@@ -111,6 +115,59 @@ export default async function DashboardPage() {
           )}
         </div>
       </div>
+
+      {tomorrow.total > 0 && (
+        <div className="mb-6 rounded-xl border border-neutral-200 bg-white">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-200 px-5 py-3">
+            <div>
+              <h2 className="text-sm font-semibold text-neutral-900">Mañana: pendientes de confirmar</h2>
+              <p className="text-xs text-neutral-500">
+                {tomorrow.confirmed} de {tomorrow.total} citas confirmadas por el paciente
+                {tomorrow.pending.length > 0 && " · llama a estos pacientes para evitar huecos vacíos"}
+              </p>
+            </div>
+          </div>
+
+          {tomorrow.pending.length === 0 ? (
+            <p className="px-5 py-4 text-sm text-green-700">
+              ✓ Todos los pacientes de mañana han confirmado su cita.
+            </p>
+          ) : (
+            <ul className="divide-y divide-neutral-100">
+              {tomorrow.pending.map((a) => (
+                <li key={a.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-neutral-900">
+                      {formatInTimeZone(a.startsAt, timezone, "HH:mm")} · {a.fullName}
+                    </p>
+                    <p className="truncate text-xs text-neutral-400">
+                      {a.service}
+                      {a.phone && (
+                        <>
+                          {" · "}
+                          <a href={`tel:${a.phone}`} className="text-brand-600 hover:underline">
+                            {a.phone}
+                          </a>
+                        </>
+                      )}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                        a.reminderSent ? "bg-amber-100 text-amber-700" : "bg-neutral-100 text-neutral-500"
+                      }`}
+                    >
+                      {a.reminderSent ? "Recordatorio sin respuesta" : "Sin recordatorio"}
+                    </span>
+                    <ConfirmAttendanceButton appointmentId={a.id} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <div className="mb-6">
         <ConversationsChart data={dailyActivity} />

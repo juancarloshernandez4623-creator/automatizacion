@@ -101,6 +101,61 @@ export async function getTodaysAppointments(
   }));
 }
 
+export type TomorrowAttendance = {
+  total: number;
+  confirmed: number;
+  /** Citas de mañana que el paciente aun no ha confirmado, ordenadas por hora. */
+  pending: {
+    id: string;
+    service: string;
+    startsAt: string;
+    fullName: string;
+    phone: string;
+    reminderSent: boolean;
+  }[];
+};
+
+/**
+ * Citas confirmadas de MAÑANA (timezone de la organizacion) y cuales siguen
+ * sin confirmacion de asistencia del paciente -- para que la recepcion
+ * llame solo a esas en vez de a todas (ver recordatorios en
+ * lib/reminders/send-reminders.ts).
+ */
+export async function getTomorrowAttendance(
+  supabase: SupabaseClient<Database>,
+  organizationId: string,
+  timezone: string,
+): Promise<TomorrowAttendance> {
+  const nowInOrgTz = formatInTimeZone(new Date(), timezone, "yyyy-MM-dd'T'HH:mm:ss");
+  const localTomorrow = addDays(startOfDay(new Date(nowInOrgTz)), 1);
+  const startUtc = fromZonedTime(localTomorrow, timezone);
+  const endUtc = fromZonedTime(addDays(localTomorrow, 1), timezone);
+
+  const { data } = await supabase
+    .from("appointments")
+    .select("id, service, starts_at, full_name, phone, reminder_sent_at, attendance_confirmed_at")
+    .eq("organization_id", organizationId)
+    .eq("status", "confirmed")
+    .gte("starts_at", startUtc.toISOString())
+    .lt("starts_at", endUtc.toISOString())
+    .order("starts_at", { ascending: true });
+
+  const rows = data ?? [];
+  const pending = rows.filter((a) => !a.attendance_confirmed_at);
+  return {
+    total: rows.length,
+    confirmed: rows.length - pending.length,
+    pending: pending.map((a) => ({
+      id: a.id,
+      service: a.service,
+      startsAt: a.starts_at,
+      fullName: a.full_name,
+      phone: a.phone,
+      reminderSent: Boolean(a.reminder_sent_at),
+    })),
+  };
+}
+
 export async function getRecentConversations(
   supabase: SupabaseClient<Database>,
   organizationId: string,
