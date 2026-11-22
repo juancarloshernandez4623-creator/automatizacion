@@ -3,7 +3,6 @@ import { createGetAvailableSlotsTool } from "./get-available-slots";
 import { createCheckSlotAvailabilityTool } from "./check-slot-availability";
 import { createBookAppointmentTool } from "./book-appointment";
 import { createSaveContactInfoTool } from "./save-contact-info";
-import { createRequestHumanHandoffTool } from "./request-human-handoff";
 import { createCancelAppointmentTool, createConfirmAttendanceTool } from "./manage-appointment";
 import type { AgentToolContext } from "./context";
 
@@ -79,7 +78,13 @@ export function buildAgentTools(ctx: AgentToolContext) {
     save_contact_info: createSaveContactInfoTool(ctx),
     confirm_attendance: createConfirmAttendanceTool(ctx),
     cancel_appointment: createCancelAppointmentTool(ctx),
-    request_human_handoff: createRequestHumanHandoffTool(ctx),
+    // request_human_handoff ya NO se ofrece al agente (decision de producto,
+    // 2026-11-22): el agente nunca "pasa con un humano" -- ante un dolor o
+    // una molestia reserva la valoracion, y si alguien pide hablar con una
+    // persona le da el telefono de la clinica y sigue ayudando. El equipo
+    // puede seguir tomando una conversacion a mano desde /conversaciones
+    // (pausando el bot). La tool sigue en request-human-handoff.ts por si
+    // algun negocio la necesitara en el futuro.
   };
   return withLogging(tools, ctx.organizationId);
 }

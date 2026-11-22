@@ -207,6 +207,15 @@ export function AgentConfigForm({ initialValues }: { initialValues: AgentConfigF
             <strong>primera visita / valoración</strong> en su lugar.
           </p>
 
+          {values.services.some((s) => s.booking === "after_assessment") &&
+            !values.services.some((s) => s.booking === "assessment") && (
+              <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                Tienes tratamientos que requieren diagnóstico previo pero ningún servicio de tipo{" "}
+                <strong>«Primera visita / valoración»</strong>. Añádelo para fijar su duración; mientras
+                tanto, el agente reservará una valoración de 30 minutos.
+              </p>
+            )}
+
           <div className="flex flex-col gap-3">
             {values.services.map((service, index) => (
               <div key={index} className="flex items-start gap-2 rounded-lg border border-neutral-100 p-3">

@@ -59,7 +59,7 @@ export function createBookAppointmentTool(ctx: AgentToolContext) {
           error: `"${matchedService.name}" requiere diagnóstico previo del profesional y el paciente no ha dicho que se lo hayan indicado.`,
           what_to_do: assessment
             ? `Reserva en su lugar "${assessment.name}" (${assessment.duration_minutes} min). Comprueba antes la disponibilidad para esa duración y explícale con naturalidad que primero el profesional tiene que valorar qué necesita.`
-            : "No hay servicio de valoración configurado: explícale que primero necesita una valoración y usa request_human_handoff para que el equipo le dé cita.",
+            : 'Reserva en su lugar "primera visita / valoración" y explícale con naturalidad que primero el profesional tiene que valorar qué necesita.',
         };
       }
 

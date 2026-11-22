@@ -15,6 +15,21 @@ import {
   DEFAULT_TONE,
 } from "./default-templates";
 
+/** Servicio de valoracion que se usa si la clinica no ha configurado uno propio. */
+const FALLBACK_ASSESSMENT: Service = {
+  name: "primera visita / valoración",
+  duration_minutes: 30,
+  description: "Exploración y diagnóstico para pacientes nuevos o con dolor/molestias",
+  booking: "assessment",
+};
+
+function withAssessmentFallback(rawServices: Json): Service[] {
+  const services = (rawServices as unknown as Service[]) ?? [];
+  const needsAssessment = services.some((s) => s.booking === "after_assessment");
+  const hasAssessment = services.some((s) => s.booking === "assessment");
+  return needsAssessment && !hasAssessment ? [FALLBACK_ASSESSMENT, ...services] : services;
+}
+
 export type RunAgentResult = {
   replyText: string;
   handoffTriggered: boolean;
@@ -136,6 +151,12 @@ export async function runAgent({
       );
     }
   }
+
+  // Si la clinica marco tratamientos como "requiere diagnostico previo" pero
+  // no configuro ningun servicio de valoracion, se anade uno por defecto:
+  // el agente siempre tiene que poder reservar algo cuando el paciente tiene
+  // una molestia (antes, en ese caso, pasaba la conversacion a un humano).
+  agentConfig = { ...agentConfig, services: withAssessmentFallback(agentConfig.services) as unknown as Json };
 
   const systemPrompt = buildSystemPrompt({
     agentConfig,
