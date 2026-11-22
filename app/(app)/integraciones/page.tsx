@@ -1,6 +1,7 @@
 import { Topbar } from "@/components/layout/topbar";
 import { requireCurrentOrg } from "@/lib/auth/current-org";
 import { WhatsAppForm } from "./whatsapp-form";
+import { RemindersForm } from "./reminders-form";
 import { GoogleConnectButton } from "./google-connect-button";
 import { CalendarPicker } from "./calendar-picker";
 
@@ -12,18 +13,27 @@ export default async function IntegracionesPage({
   const { supabase, organizationId } = await requireCurrentOrg();
   const params = await searchParams;
 
-  const [{ data: whatsappConfig }, { data: googleConfig }] = await Promise.all([
-    supabase
-      .from("whatsapp_configs")
-      .select("phone_number_id, waba_id, verify_token")
-      .eq("organization_id", organizationId)
-      .maybeSingle(),
-    supabase
-      .from("google_calendar_configs")
-      .select("calendar_id")
-      .eq("organization_id", organizationId)
-      .maybeSingle(),
-  ]);
+  const [{ data: whatsappConfig }, { data: googleConfig }, { data: reminderSettings }] =
+    await Promise.all([
+      supabase
+        .from("whatsapp_configs")
+        .select("phone_number_id, waba_id, verify_token")
+        .eq("organization_id", organizationId)
+        .maybeSingle(),
+      supabase
+        .from("google_calendar_configs")
+        .select("calendar_id")
+        .eq("organization_id", organizationId)
+        .maybeSingle(),
+      // Consulta aparte a proposito: si la migracion 0017 aun no se ha
+      // aplicado, falla solo esta (sin ajustes de recordatorio) y el
+      // formulario de WhatsApp de arriba sigue funcionando.
+      supabase
+        .from("whatsapp_configs")
+        .select("reminders_enabled, reminder_template_name, reminder_template_language")
+        .eq("organization_id", organizationId)
+        .maybeSingle(),
+    ]);
 
   return (
     <div className="flex flex-col">
@@ -51,6 +61,18 @@ export default async function IntegracionesPage({
           </p>
           <div className="mt-5">
             <WhatsAppForm existingConfig={whatsappConfig ?? null} />
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-neutral-200 bg-white p-6">
+          <h2 className="text-base font-semibold text-neutral-900">Recordatorios de cita</h2>
+          <p className="mt-1 text-sm text-neutral-500">
+            Cada mañana se envía un WhatsApp a los pacientes con cita al día siguiente para que la
+            confirmen o la cambien. Menos pacientes que no se presentan, y los huecos que se liberan
+            quedan disponibles para otros.
+          </p>
+          <div className="mt-5">
+            <RemindersForm settings={reminderSettings ?? null} whatsappConnected={Boolean(whatsappConfig)} />
           </div>
         </section>
 

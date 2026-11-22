@@ -17,6 +17,7 @@ const serviceSchema = z.object({
   name: z.string().min(1, "El servicio necesita un nombre"),
   duration_minutes: z.number().int().min(5).max(480),
   description: z.string().optional(),
+  booking: z.enum(["direct", "assessment", "after_assessment"]).optional(),
 });
 
 export const agentConfigFormSchema = z.object({

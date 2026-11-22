@@ -3,7 +3,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json, Tables } from "@/lib/database.types";
 import type { AgentConfigFormValues, BusinessHours, Service } from "@/lib/types";
-import { buildSystemPrompt } from "./build-system-prompt";
+import { buildSystemPrompt, type ContactAppointment } from "./build-system-prompt";
 import { loadConversationHistory } from "./message-history";
 import { buildAgentTools } from "./tools";
 import {
@@ -111,18 +111,30 @@ export async function runAgent({
   // y no conserva las tool-calls de turnos anteriores, asi que esta es la
   // unica forma de que el agente sepa que ya reservo (ver
   // buildSystemPrompt). En el sandbox no hay citas reales que leer.
-  let contactAppointments: { service: string; starts_at: string; full_name: string }[] | undefined;
+  let contactAppointments: ContactAppointment[] | undefined;
   if (!sandbox) {
-    const { data } = await admin
-      .from("appointments")
-      .select("service, starts_at, full_name")
-      .eq("organization_id", organizationId)
-      .eq("contact_id", contactId)
-      .eq("status", "confirmed")
-      .gte("starts_at", new Date().toISOString())
-      .order("starts_at", { ascending: true })
-      .limit(5);
-    contactAppointments = data ?? [];
+    const upcoming = (columns: string) =>
+      admin
+        .from("appointments")
+        .select(columns)
+        .eq("organization_id", organizationId)
+        .eq("contact_id", contactId)
+        .eq("status", "confirmed")
+        .gte("starts_at", new Date().toISOString())
+        .order("starts_at", { ascending: true })
+        .limit(5);
+
+    const withAttendance = await upcoming("id, service, starts_at, full_name, attendance_confirmed_at");
+    if (!withAttendance.error) {
+      contactAppointments = (withAttendance.data ?? []) as unknown as ContactAppointment[];
+    } else {
+      // Columna aun inexistente (migracion 0017 sin aplicar): nunca dejar al
+      // agente sin saber que citas tiene el cliente por eso.
+      const basic = await upcoming("id, service, starts_at, full_name");
+      contactAppointments = ((basic.data ?? []) as unknown as Omit<ContactAppointment, "attendance_confirmed_at">[]).map(
+        (a) => ({ ...a, attendance_confirmed_at: null }),
+      );
+    }
   }
 
   const systemPrompt = buildSystemPrompt({

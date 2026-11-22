@@ -56,7 +56,9 @@ export default async function CitasPage({
 
   const { data: appointments } = await supabase
     .from("appointments")
-    .select("id, service, starts_at, ends_at, status, full_name, phone, is_new_patient, notes")
+    // "*" a proposito: incluye reminder_sent_at/attendance_confirmed_at
+    // cuando existen (migracion 0017) sin romper la pagina si aun no.
+    .select("*")
     .eq("organization_id", organizationId)
     .neq("status", "cancelled")
     .gte("starts_at", gridStart.toISOString())

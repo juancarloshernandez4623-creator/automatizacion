@@ -24,6 +24,16 @@ const webhookMessageSchema = z.object({
   // nuestro o suyo). `emoji` viene vacio cuando el cliente QUITA una
   // reaccion que habia puesto antes -- no es un mensaje malformado.
   reaction: z.object({ message_id: z.string().optional(), emoji: z.string().optional() }).optional(),
+  // Pulsacion de un boton de respuesta rapida de una PLANTILLA (ej. el
+  // recordatorio de cita con "Confirmo asistencia" / "Necesito cambiarla").
+  button: z.object({ text: z.string().optional(), payload: z.string().optional() }).optional(),
+  // Respuesta a un mensaje interactivo (botones/lista enviados fuera de plantilla).
+  interactive: z
+    .object({
+      button_reply: z.object({ title: z.string().optional() }).optional(),
+      list_reply: z.object({ title: z.string().optional() }).optional(),
+    })
+    .optional(),
   // Otros tipos (image, audio, button, interactive, location, ...) llegan
   // con sus propias claves; no las tipamos todas, `extractMessageText`
   // aplica un fallback generico.
@@ -95,6 +105,15 @@ function extractMessageText(
   if (message.type === "reaction") {
     const emoji = message.reaction?.emoji;
     return emoji ? `Reaccionó con ${emoji}` : "Quitó su reacción a un mensaje";
+  }
+  // Un boton pulsado equivale a que el paciente escriba su texto: se pasa
+  // tal cual para que el agente lo entienda ("Confirmo asistencia").
+  if (message.type === "button" && message.button?.text) {
+    return message.button.text;
+  }
+  if (message.type === "interactive") {
+    const title = message.interactive?.button_reply?.title ?? message.interactive?.list_reply?.title;
+    if (title) return title;
   }
   // Tipos no-texto (image, audio, sticker, location, interactive, button,
   // etc.): guardamos un marcador legible en vez del contenido binario/JSON

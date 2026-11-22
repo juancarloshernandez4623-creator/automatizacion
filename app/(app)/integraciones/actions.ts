@@ -96,6 +96,67 @@ export async function testWhatsAppConnection(): Promise<IntegrationsActionState>
   }
 }
 
+const reminderSettingsSchema = z
+  .object({
+    enabled: z.boolean(),
+    templateName: z
+      .string()
+      .trim()
+      .regex(/^[a-z0-9_]*$/, "El nombre de la plantilla solo admite minúsculas, números y guiones bajos (como en Meta)."),
+    templateLanguage: z.string().trim().min(2, "Indica el idioma de la plantilla (ej. es)"),
+  })
+  .refine((v) => !v.enabled || v.templateName.length > 0, {
+    message: "Para activar los recordatorios indica el nombre de la plantilla aprobada en Meta.",
+  });
+
+/**
+ * Activa/desactiva los recordatorios de cita del dia anterior y guarda que
+ * plantilla de Meta usar (ver lib/reminders/send-reminders.ts). Requiere
+ * tener ya guardada la configuracion de WhatsApp: los recordatorios salen
+ * por ese mismo numero.
+ */
+export async function saveReminderSettings(
+  _prevState: IntegrationsActionState,
+  formData: FormData,
+): Promise<IntegrationsActionState> {
+  const parsed = reminderSettingsSchema.safeParse({
+    enabled: formData.get("enabled") === "on",
+    templateName: formData.get("templateName") ?? "",
+    templateLanguage: formData.get("templateLanguage") ?? "es",
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+
+  const { supabase, organizationId } = await requireCurrentOrg();
+
+  const { data: updated, error } = await supabase
+    .from("whatsapp_configs")
+    .update({
+      reminders_enabled: parsed.data.enabled,
+      reminder_template_name: parsed.data.templateName || null,
+      reminder_template_language: parsed.data.templateLanguage,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("organization_id", organizationId)
+    .select("organization_id");
+
+  if (error) {
+    return { error: "No pudimos guardar los recordatorios." };
+  }
+  if (!updated || updated.length === 0) {
+    return { error: "Primero guarda la configuración de WhatsApp." };
+  }
+
+  revalidatePath("/integraciones");
+  return {
+    success: parsed.data.enabled
+      ? "Recordatorios activados: se enviarán cada mañana para las citas del día siguiente."
+      : "Recordatorios desactivados.",
+  };
+}
+
 const calendarIdSchema = z.object({ calendarId: z.string().trim().min(1) });
 
 export async function saveGoogleCalendarId(

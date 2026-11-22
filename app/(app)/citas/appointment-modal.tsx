@@ -17,6 +17,9 @@ export type AppointmentRow = {
   phone: string;
   is_new_patient: boolean | null;
   notes: string | null;
+  /** Opcionales: no existen hasta aplicar la migracion 0017. */
+  reminder_sent_at?: string | null;
+  attendance_confirmed_at?: string | null;
 };
 
 const statusLabel: Record<AppointmentRow["status"], { label: string; className: string }> = {
@@ -140,6 +143,16 @@ export function AppointmentModal({
                     </span>
                   )}
                   {appt.notes && <p className="mt-1 text-neutral-500">{appt.notes}</p>}
+                  {appt.status === "confirmed" &&
+                    (appt.attendance_confirmed_at ? (
+                      <span className="mt-1 w-fit rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
+                        ✓ El paciente confirmó que vendrá
+                      </span>
+                    ) : appt.reminder_sent_at ? (
+                      <span className="mt-1 w-fit rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-medium text-neutral-600">
+                        Recordatorio enviado · sin confirmar
+                      </span>
+                    ) : null)}
                 </div>
 
                 {confirmingDeleteId === appt.id ? (

@@ -4,10 +4,12 @@ import { useActionState, useState } from "react";
 import { CheckCircle, Plus, Trash, WarningCircle } from "@phosphor-icons/react";
 import {
   COMMON_TIMEZONES,
+  SERVICE_BOOKING_LABELS,
   WEEKDAYS,
   WEEKDAY_LABELS,
   type AgentConfigFormValues,
   type Service,
+  type ServiceBooking,
   type TimeRange,
   type Weekday,
 } from "@/lib/types";
@@ -46,7 +48,10 @@ export function AgentConfigForm({ initialValues }: { initialValues: AgentConfigF
   function addService() {
     setValues((prev) => ({
       ...prev,
-      services: [...prev.services, { name: "", duration_minutes: 30, description: "" }],
+      services: [
+        ...prev.services,
+        { name: "", duration_minutes: 30, description: "", booking: "after_assessment" },
+      ],
     }));
   }
 
@@ -184,7 +189,7 @@ export function AgentConfigForm({ initialValues }: { initialValues: AgentConfigF
         </section>
 
         <section className="rounded-xl border border-neutral-200 bg-white p-5">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-1 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-neutral-900">Servicios</h2>
             <button
               type="button"
@@ -194,6 +199,13 @@ export function AgentConfigForm({ initialValues }: { initialValues: AgentConfigF
               <Plus size={13} /> Agregar
             </button>
           </div>
+
+          <p className="mb-4 text-xs text-neutral-500">
+            El paciente no puede diagnosticarse solo. Marca como <strong>«Requiere diagnóstico
+            previo»</strong> los tratamientos que decide el profesional (empastes, endodoncias…): si
+            el paciente tiene dolor o no sabe qué necesita, el agente le reservará la{" "}
+            <strong>primera visita / valoración</strong> en su lugar.
+          </p>
 
           <div className="flex flex-col gap-3">
             {values.services.map((service, index) => (
@@ -209,8 +221,20 @@ export function AgentConfigForm({ initialValues }: { initialValues: AgentConfigF
                     value={service.description ?? ""}
                     onChange={(e) => updateService(index, { description: e.target.value })}
                     placeholder="Descripción (opcional)"
-                    className={inputClass()}
+                    className={`${inputClass()} mb-2`}
                   />
+                  <select
+                    value={service.booking ?? "direct"}
+                    onChange={(e) => updateService(index, { booking: e.target.value as ServiceBooking })}
+                    className={inputClass()}
+                    aria-label="Cómo se reserva este servicio"
+                  >
+                    {(Object.keys(SERVICE_BOOKING_LABELS) as ServiceBooking[]).map((key) => (
+                      <option key={key} value={key}>
+                        {SERVICE_BOOKING_LABELS[key]}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="w-28">
                   <label className={labelClass()}>Minutos</label>

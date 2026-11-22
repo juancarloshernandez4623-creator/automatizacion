@@ -25,10 +25,35 @@ export type TimeRange = {
 
 export type BusinessHours = Record<Weekday, TimeRange[]>;
 
+/**
+ * Como puede reservar el paciente un servicio por WhatsApp. Existe porque
+ * el paciente no puede diagnosticarse solo: quien escribe "creo que
+ * necesito un empaste" puede necesitar en realidad una endodoncia (mas
+ * larga, otro hueco en la agenda). El agente nunca reserva un tratamiento
+ * que requiere diagnostico sin que la clinica lo haya indicado antes.
+ *
+ * - "direct": se reserva directamente (limpieza, revision...).
+ * - "assessment": primera visita / valoracion -- lo que se reserva cuando
+ *   el paciente es nuevo, tiene dolor/molestias o no sabe que necesita.
+ * - "after_assessment": tratamiento que solo se reserva si el profesional
+ *   ya lo indico (segunda sesion, tratamiento ya pautado...).
+ *
+ * `undefined` en servicios guardados antes de existir este campo: se trata
+ * como "direct" para no cambiar el comportamiento de negocios existentes.
+ */
+export type ServiceBooking = "direct" | "assessment" | "after_assessment";
+
+export const SERVICE_BOOKING_LABELS: Record<ServiceBooking, string> = {
+  direct: "Reserva directa",
+  assessment: "Primera visita / valoración",
+  after_assessment: "Requiere diagnóstico previo",
+};
+
 export type Service = {
   name: string;
   duration_minutes: number;
   description?: string;
+  booking?: ServiceBooking;
 };
 
 // El nombre del negocio NO vive aqui -- vive en `organizations.name` (una

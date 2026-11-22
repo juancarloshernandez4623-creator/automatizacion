@@ -7,7 +7,8 @@ import type { BusinessHours, BusinessInfo, Service } from "@/lib/types";
  *  2. Contenido inicial del formulario de /personalizacion antes de guardar.
  *
  * MANTENER EN SYNC con los valores por defecto insertados por el trigger
- * `private.handle_new_user()` en supabase/migrations/0012_signup_trigger.sql
+ * `private.handle_new_user()` (ultima version en
+ * supabase/migrations/0017_reminders_and_assessment_services.sql)
  * y con supabase/seed.sql -- estan duplicados a proposito (SQL vs TS no
  * comparten codigo), pero deben decir lo mismo.
  */
@@ -25,9 +26,15 @@ export const DEFAULT_BUSINESS_INFO: BusinessInfo = {
 };
 
 export const DEFAULT_SERVICES: Service[] = [
-  { name: "limpieza", duration_minutes: 30, description: "Limpieza dental de rutina" },
-  { name: "empaste", duration_minutes: 45, description: "Empaste dental" },
-  { name: "blanqueamiento", duration_minutes: 60, description: "Blanqueamiento dental" },
+  {
+    name: "primera visita / valoración",
+    duration_minutes: 30,
+    description: "Exploración y diagnóstico para pacientes nuevos o con dolor/molestias",
+    booking: "assessment",
+  },
+  { name: "limpieza", duration_minutes: 30, description: "Limpieza dental de rutina", booking: "direct" },
+  { name: "empaste", duration_minutes: 45, description: "Empaste dental", booking: "after_assessment" },
+  { name: "blanqueamiento", duration_minutes: 60, description: "Blanqueamiento dental", booking: "after_assessment" },
 ];
 
 export const DEFAULT_BUSINESS_HOURS: BusinessHours = {

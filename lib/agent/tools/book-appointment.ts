@@ -21,13 +21,46 @@ export function createBookAppointmentTool(ctx: AgentToolContext) {
         .boolean()
         .optional()
         .describe("Si el cliente es paciente/cliente nuevo. Omitir si el negocio no lo pide."),
+      prescribed_by_professional: z
+        .boolean()
+        .optional()
+        .describe(
+          "Solo para servicios que requieren diagnostico previo: true UNICAMENTE si el paciente dijo expresamente que el profesional ya le indico este tratamiento (segunda sesion, tratamiento ya pautado). Nunca lo pongas a true por deduccion propia.",
+        ),
     }),
-    execute: async ({ full_name, service, starts_at, is_new_patient }) => {
+    execute: async ({ full_name, service, starts_at, is_new_patient, prescribed_by_professional }) => {
       const matchedService = ctx.services.find(
         (s) => s.name.trim().toLowerCase() === service.trim().toLowerCase(),
       );
       if (!matchedService) {
         return { error: `Servicio "${service}" no reconocido, no se pudo agendar.` };
+      }
+
+      // Freno real (no solo el prompt): un tratamiento que decide el
+      // profesional no se reserva porque el paciente "crea" necesitarlo.
+      // Excepcion: si el cliente ya tiene una cita confirmada de ese mismo
+      // servicio, esto es un CAMBIO de fecha de un tratamiento ya pautado.
+      let isReschedule = false;
+      if (matchedService.booking === "after_assessment" && !prescribed_by_professional && !ctx.sandbox) {
+        const { data: sameService } = await ctx.admin
+          .from("appointments")
+          .select("id")
+          .eq("organization_id", ctx.organizationId)
+          .eq("contact_id", ctx.contactId)
+          .eq("status", "confirmed")
+          .ilike("service", matchedService.name)
+          .limit(1);
+        isReschedule = Boolean(sameService && sameService.length > 0);
+      }
+
+      if (matchedService.booking === "after_assessment" && !prescribed_by_professional && !isReschedule) {
+        const assessment = ctx.services.find((s) => s.booking === "assessment");
+        return {
+          error: `"${matchedService.name}" requiere diagnóstico previo del profesional y el paciente no ha dicho que se lo hayan indicado.`,
+          what_to_do: assessment
+            ? `Reserva en su lugar "${assessment.name}" (${assessment.duration_minutes} min). Comprueba antes la disponibilidad para esa duración y explícale con naturalidad que primero el profesional tiene que valorar qué necesita.`
+            : "No hay servicio de valoración configurado: explícale que primero necesita una valoración y usa request_human_handoff para que el equipo le dé cita.",
+        };
       }
 
       const startsAtDate = new Date(starts_at);

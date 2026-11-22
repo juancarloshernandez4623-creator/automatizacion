@@ -87,6 +87,9 @@ export type Database = {
           access_token_encrypted: string;
           verify_token: string;
           app_secret_encrypted: string;
+          reminders_enabled: boolean;
+          reminder_template_name: string | null;
+          reminder_template_language: string;
           updated_at: string;
         };
         Insert: {
@@ -96,6 +99,9 @@ export type Database = {
           access_token_encrypted: string;
           verify_token: string;
           app_secret_encrypted: string;
+          reminders_enabled?: boolean;
+          reminder_template_name?: string | null;
+          reminder_template_language?: string;
           updated_at?: string;
         };
         Update: {
@@ -105,6 +111,9 @@ export type Database = {
           access_token_encrypted?: string;
           verify_token?: string;
           app_secret_encrypted?: string;
+          reminders_enabled?: boolean;
+          reminder_template_name?: string | null;
+          reminder_template_language?: string;
           updated_at?: string;
         };
         Relationships: [
@@ -338,6 +347,8 @@ export type Database = {
           full_name: string;
           phone: string;
           notes: string | null;
+          reminder_sent_at: string | null;
+          attendance_confirmed_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -353,6 +364,8 @@ export type Database = {
           full_name: string;
           phone: string;
           notes?: string | null;
+          reminder_sent_at?: string | null;
+          attendance_confirmed_at?: string | null;
           created_at?: string;
         };
         Update: {
@@ -368,6 +381,8 @@ export type Database = {
           full_name?: string;
           phone?: string;
           notes?: string | null;
+          reminder_sent_at?: string | null;
+          attendance_confirmed_at?: string | null;
           created_at?: string;
         };
         Relationships: [

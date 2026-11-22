@@ -30,7 +30,7 @@ values (
   'Eres el asistente virtual de Clínica Dental Demo. Saluda con calidez, entiende el motivo de contacto del cliente y ayudalo a agendar una cita si lo necesita. Se breve y claro en tus mensajes de WhatsApp.',
   'profesional y cálido',
   '{"name":"Clínica Dental Demo","address":"Av. Reforma 123, CDMX","phone":"+525512345678","description":"Clínica dental de puertas abiertas desde 2015.","faq":"Aceptamos la mayoría de los seguros dentales. Cancelaciones con 24h de anticipación sin costo."}'::jsonb,
-  '[{"name":"limpieza","duration_minutes":30,"description":"Limpieza dental de rutina"},{"name":"empaste","duration_minutes":45,"description":"Empaste dental"},{"name":"blanqueamiento","duration_minutes":60,"description":"Blanqueamiento dental"}]'::jsonb,
+  '[{"name":"primera visita / valoración","duration_minutes":30,"description":"Exploración y diagnóstico para pacientes nuevos o con dolor/molestias","booking":"assessment"},{"name":"limpieza","duration_minutes":30,"description":"Limpieza dental de rutina","booking":"direct"},{"name":"empaste","duration_minutes":45,"description":"Empaste dental","booking":"after_assessment"},{"name":"blanqueamiento","duration_minutes":60,"description":"Blanqueamiento dental","booking":"after_assessment"}]'::jsonb,
   '{"mon":[{"start":"09:00","end":"18:00"}],"tue":[{"start":"09:00","end":"18:00"}],"wed":[{"start":"09:00","end":"18:00"}],"thu":[{"start":"09:00","end":"18:00"}],"fri":[{"start":"09:00","end":"18:00"}],"sat":[{"start":"09:00","end":"13:00"}],"sun":[]}'::jsonb,
   'Te paso con un humano en un momento.'
 )
