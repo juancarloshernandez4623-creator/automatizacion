@@ -33,6 +33,7 @@ export const agentConfigFormSchema = z.object({
     phone: z.string(),
     description: z.string(),
     faq: z.string(),
+    prescribed_treatment_minutes: z.number().int().min(5).max(480).optional(),
   }),
   services: z.array(serviceSchema).min(1, "Agrega al menos un servicio"),
   businessHours: businessHoursSchema,

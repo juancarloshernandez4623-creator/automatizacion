@@ -2,7 +2,8 @@ import { generateText, stepCountIs, type ModelMessage } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json, Tables } from "@/lib/database.types";
-import type { AgentConfigFormValues, BusinessHours, Service } from "@/lib/types";
+import type { AgentConfigFormValues, BusinessHours, BusinessInfo, Service } from "@/lib/types";
+import { DEFAULT_PRESCRIBED_TREATMENT_MINUTES } from "./tools/resolve-service";
 import { buildSystemPrompt, type ContactAppointment } from "./build-system-prompt";
 import { loadConversationHistory } from "./message-history";
 import { buildAgentTools } from "./tools";
@@ -178,6 +179,9 @@ export async function runAgent({
     // nivel de BD (ver lib/database.types.ts); esta es la frontera donde se
     // afirma su forma real de aplicacion.
     services: agentConfig.services as unknown as Service[],
+    prescribedTreatmentMinutes:
+      (agentConfig.business_info as unknown as BusinessInfo | null)?.prescribed_treatment_minutes ??
+      DEFAULT_PRESCRIBED_TREATMENT_MINUTES,
     businessHours: agentConfig.business_hours as unknown as BusinessHours,
     conversationId,
     contactId,

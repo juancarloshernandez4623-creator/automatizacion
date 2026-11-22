@@ -26,16 +26,18 @@ function formatServices(services: Service[]): string {
 function assessmentRule(services: Service[]): string {
   const assessment = services.find((s) => s.booking === "assessment");
   const needsDiagnosis = services.filter((s) => s.booking === "after_assessment");
-  if (needsDiagnosis.length === 0) return "";
+  if (needsDiagnosis.length === 0 && !assessment) return "";
 
   // runAgent garantiza que siempre hay un servicio de valoracion (anade uno
   // por defecto si la clinica no lo configuro), asi que esto siempre reserva.
   const target = `reserva el servicio "${assessment?.name ?? "primera visita / valoración"}"`;
 
   return `
-2b. REGLA CLÍNICA, MUY IMPORTANTE: el paciente NO puede diagnosticarse solo. Quien dice "necesito un empaste" puede necesitar en realidad una endodoncia u otro tratamiento distinto (más largo, otro hueco en la agenda). Los servicios marcados "SOLO si el profesional ya lo indicó" (${needsDiagnosis
-    .map((s) => s.name)
-    .join(", ")}) solo puedes reservarlos si el paciente dice expresamente que el profesional ya se lo pautó (ej. "el doctor me dijo que volviera para el empaste", "es la segunda sesión") -- y en ese caso pasa prescribed_by_professional:true a book_appointment. En cualquier otro caso -- paciente nuevo, dolor, molestias, "creo que tengo una caries", "se me ha roto un diente", o no sabe qué necesita -- ${target}. Explícaselo con naturalidad (ej. "Lo primero sería una valoración para que el doctor vea exactamente qué necesitas; ¿te busco hueco?") y sigue con el flujo normal de reserva. Una molestia o un dolor NO es motivo para pasar la conversación a un humano: es justo el caso en que debes reservarle la valoración. Nunca opines sobre qué tratamiento necesita ni le des un diagnóstico.`;
+2b. REGLA CLÍNICA, MUY IMPORTANTE: el paciente NO puede diagnosticarse solo. Quien dice "necesito un empaste" puede necesitar en realidad una endodoncia u otro tratamiento distinto (más largo, otro hueco en la agenda). Los tratamientos${
+    needsDiagnosis.length > 0
+      ? ` (en tu lista, los marcados "SOLO si el profesional ya lo indicó": ${needsDiagnosis.map((s) => s.name).join(", ")})`
+      : ""
+  } solo puedes reservarlos si el paciente dice expresamente que el profesional ya se lo pautó (ej. "el doctor me dijo que volviera para el empaste", "es la segunda sesión") -- y en ese caso pasa prescribed_by_professional:true a book_appointment. Lo mismo vale para CUALQUIER tratamiento que el paciente diga tener ya pautado aunque no esté en la lista (endodoncia, extracción, corona, implante, ortodoncia...): pásalo con su nombre tal cual (ej. service "endodoncia") a get_available_slots / check_slot_availability / book_appointment, con prescribed_by_professional:true al reservar; el sistema le asigna la duración adecuada. En cualquier otro caso -- paciente nuevo, dolor, molestias, "creo que tengo una caries", "se me ha roto un diente", o no sabe qué necesita -- ${target}. Explícaselo con naturalidad (ej. "Lo primero sería una valoración para que el doctor vea exactamente qué necesitas; ¿te busco hueco?") y sigue con el flujo normal de reserva. Una molestia o un dolor NO es motivo para pasar la conversación a un humano: es justo el caso en que debes reservarle la valoración. Nunca opines sobre qué tratamiento necesita ni le des un diagnóstico.`;
 }
 
 function formatBusinessHours(hours: BusinessHours): string {
@@ -141,7 +143,7 @@ Esta lista es la verdad: si una cita aparece aquí, YA ESTÁ creada y garantizad
 ## Flujo de atención (sigue este orden)
 1. Si es el primer mensaje del hilo o ha pasado bastante tiempo desde el último, saluda brevemente y pregunta el motivo de contacto.
 ${
-  services.some((s) => s.booking === "after_assessment")
+  services.some((s) => s.booking === "after_assessment" || s.booking === "assessment")
     ? `2. Si el cliente quiere agendar una cita, pregúntale qué le pasa o qué necesita (no le enseñes la lista de tratamientos para que elija como si fuera un menú) y decide tú el servicio adecuado de la lista de arriba.${assessmentRule(services)}`
     : "2. Si el cliente quiere agendar una cita, pregunta qué servicio necesita (de la lista de arriba)."
 }

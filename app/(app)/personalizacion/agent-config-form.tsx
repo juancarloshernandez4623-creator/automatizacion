@@ -269,6 +269,34 @@ export function AgentConfigForm({ initialValues }: { initialValues: AgentConfigF
               </div>
             ))}
           </div>
+
+          <div className="mt-4 flex flex-wrap items-end gap-3 rounded-lg border border-neutral-100 p-3">
+            <div className="w-28">
+              <label className={labelClass()}>Minutos</label>
+              <input
+                type="number"
+                min={5}
+                max={480}
+                value={values.businessInfo.prescribed_treatment_minutes ?? 60}
+                onChange={(e) =>
+                  setValues((prev) => ({
+                    ...prev,
+                    businessInfo: {
+                      ...prev.businessInfo,
+                      prescribed_treatment_minutes: Number(e.target.value) || 60,
+                    },
+                  }))
+                }
+                className={inputClass()}
+              />
+            </div>
+            <p className="min-w-0 flex-1 text-xs text-neutral-500">
+              <strong>Otros tratamientos ya pautados.</strong> Si un paciente dice que el profesional
+              ya le pautó un tratamiento que no está en la lista (endodoncia, extracción, corona…), el
+              agente lo reserva con ese nombre y esta duración, marcada como «estimada» para que
+              recepción la revise.
+            </p>
+          </div>
         </section>
 
         <section className="rounded-xl border border-neutral-200 bg-white p-5">

@@ -4,6 +4,7 @@ import { getOrgCalendarClient } from "@/lib/google/calendar-client";
 import { createCalendarEvent } from "@/lib/google/create-event";
 import { getFreeBusySlots, isSlotAvailable } from "@/lib/google/freebusy";
 import type { AgentToolContext } from "./context";
+import { resolveService } from "./resolve-service";
 
 const UNIQUE_VIOLATION = "23505";
 
@@ -13,7 +14,11 @@ export function createBookAppointmentTool(ctx: AgentToolContext) {
       "Agenda una cita para el cliente actual. Solo llamar despues de confirmar verbalmente servicio, horario (que debe venir de get_available_slots) y nombre completo.",
     inputSchema: z.object({
       full_name: z.string().min(1).describe("Nombre completo del cliente."),
-      service: z.string().describe("Nombre exacto del servicio (de la lista de servicios)."),
+      service: z
+        .string()
+        .describe(
+          "Nombre del servicio de la lista de servicios. Si el profesional ya le pauto al paciente un tratamiento que no esta en la lista (endodoncia, extraccion, corona...), pasa el nombre de ese tratamiento tal cual y prescribed_by_professional:true.",
+        ),
       starts_at: z
         .string()
         .describe("Fecha/hora de inicio en ISO 8601, EXACTAMENTE uno de los slots devueltos por get_available_slots."),
@@ -25,16 +30,14 @@ export function createBookAppointmentTool(ctx: AgentToolContext) {
         .boolean()
         .optional()
         .describe(
-          "Solo para servicios que requieren diagnostico previo: true UNICAMENTE si el paciente dijo expresamente que el profesional ya le indico este tratamiento (segunda sesion, tratamiento ya pautado). Nunca lo pongas a true por deduccion propia.",
+          "Para tratamientos que requieren diagnostico previo (y cualquiera fuera de la lista de servicios): true UNICAMENTE si el paciente dijo expresamente que el profesional ya le indico este tratamiento (segunda sesion, tratamiento ya pautado). Nunca lo pongas a true por deduccion propia.",
         ),
     }),
     execute: async ({ full_name, service, starts_at, is_new_patient, prescribed_by_professional }) => {
-      const matchedService = ctx.services.find(
-        (s) => s.name.trim().toLowerCase() === service.trim().toLowerCase(),
-      );
-      if (!matchedService) {
-        return { error: `Servicio "${service}" no reconocido, no se pudo agendar.` };
-      }
+      // Servicio de la lista, o tratamiento pautado fuera de ella (endodoncia,
+      // extraccion...): este ultimo se reserva con su nombre y la duracion por
+      // defecto de la clinica, marcada como estimada (ver resolve-service.ts).
+      const matchedService = resolveService(ctx, service);
 
       // Freno real (no solo el prompt): un tratamiento que decide el
       // profesional no se reserva porque el paciente "crea" necesitarlo.
@@ -67,7 +70,10 @@ export function createBookAppointmentTool(ctx: AgentToolContext) {
       if (Number.isNaN(startsAtDate.getTime())) {
         return { error: "La fecha/hora proporcionada no es valida." };
       }
-      const endsAtDate = new Date(startsAtDate.getTime() + matchedService.duration_minutes * 60_000);
+      const endsAtDate = new Date(startsAtDate.getTime() + matchedService.durationMinutes * 60_000);
+      const estimatedDurationNote = matchedService.inCatalog
+        ? null
+        : `Tratamiento pautado por el profesional (según el paciente). Duración estimada de ${matchedService.durationMinutes} min: revisar.`;
 
       if (ctx.sandbox) {
         return {
@@ -106,7 +112,7 @@ export function createBookAppointmentTool(ctx: AgentToolContext) {
       if (!calendarClient) {
         return {
           error:
-            "Este negocio aun no ha conectado su Google Calendar, no puedo crear la cita todavia. Pide que un humano la agende manualmente.",
+            "Este negocio aun no ha conectado su Google Calendar, no puedo crear la cita todavia. Pide al cliente que llame a la clinica para reservarla.",
         };
       }
 
@@ -124,7 +130,7 @@ export function createBookAppointmentTool(ctx: AgentToolContext) {
         calendarId: calendarClient.calendarId,
         businessHours: ctx.businessHours,
         startsAt: startsAtDate,
-        durationMinutes: matchedService.duration_minutes,
+        durationMinutes: matchedService.durationMinutes,
         timezone: ctx.organizationTimezone,
       });
 
@@ -133,7 +139,7 @@ export function createBookAppointmentTool(ctx: AgentToolContext) {
           calendar: calendarClient.calendar,
           calendarId: calendarClient.calendarId,
           businessHours: ctx.businessHours,
-          durationMinutes: matchedService.duration_minutes,
+          durationMinutes: matchedService.durationMinutes,
           timezone: ctx.organizationTimezone,
           searchFrom: startsAtDate,
         });
@@ -156,7 +162,7 @@ export function createBookAppointmentTool(ctx: AgentToolContext) {
           summary: `${matchedService.name} — ${full_name}`,
           description: `Agendado por el agente de WhatsApp.${
             is_new_patient !== undefined ? `\nPaciente nuevo: ${is_new_patient ? "si" : "no"}.` : ""
-          }`,
+          }${estimatedDurationNote ? `\n${estimatedDurationNote}` : ""}`,
           startsAt: startsAtDate.toISOString(),
           endsAt: endsAtDate.toISOString(),
           timezone: ctx.organizationTimezone,
@@ -177,6 +183,7 @@ export function createBookAppointmentTool(ctx: AgentToolContext) {
           is_new_patient: is_new_patient ?? null,
           full_name,
           phone: ctx.contactPhone,
+          notes: estimatedDurationNote,
         })
         .select("id, service, starts_at, ends_at")
         .single();
@@ -188,7 +195,13 @@ export function createBookAppointmentTool(ctx: AgentToolContext) {
         return { error: "La cita se creo en el calendario pero no se pudo registrar internamente." };
       }
 
-      return { success: true, appointment: inserted };
+      return {
+        success: true,
+        appointment: inserted,
+        ...(estimatedDurationNote
+          ? { note: "Reservado con duración estimada; la clínica la revisará. No hace falta mencionárselo al paciente." }
+          : {}),
+      };
     },
   });
 }

@@ -65,6 +65,12 @@ export type BusinessInfo = {
   phone: string;
   description: string;
   faq: string;
+  /**
+   * Duracion (min) con la que el agente reserva un tratamiento que el
+   * paciente dice tener pautado por el profesional pero que no esta en la
+   * lista de servicios (endodoncia, extraccion...). Opcional: 60 si falta.
+   */
+  prescribed_treatment_minutes?: number;
 };
 
 export type AgentConfigFormValues = {

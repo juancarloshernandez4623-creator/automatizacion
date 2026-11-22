@@ -12,6 +12,8 @@ export type AgentToolContext = {
   organizationId: string;
   organizationTimezone: string;
   services: Service[];
+  /** Duracion (min) para tratamientos pautados que no estan en `services` (ver resolve-service.ts). */
+  prescribedTreatmentMinutes: number;
   businessHours: BusinessHours;
   conversationId: string;
   contactId: string;

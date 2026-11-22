@@ -4,6 +4,7 @@ import { fromZonedTime } from "date-fns-tz";
 import { getOrgCalendarClient } from "@/lib/google/calendar-client";
 import { getFreeBusySlots, isSlotAvailable } from "@/lib/google/freebusy";
 import type { AgentToolContext } from "./context";
+import { resolveService } from "./resolve-service";
 
 const REASON_LABEL: Record<"past" | "outside_business_hours" | "busy", string> = {
   past: "esa fecha/hora ya pasó",
@@ -25,7 +26,9 @@ export function createCheckSlotAvailabilityTool(ctx: AgentToolContext) {
     inputSchema: z.object({
       service: z
         .string()
-        .describe("Nombre exacto del servicio, tal como aparece en la lista de servicios disponibles."),
+        .describe(
+          "Nombre del servicio de la lista de servicios, o el nombre del tratamiento ya pautado por el profesional si no esta en la lista (ej. endodoncia).",
+        ),
       date: z
         .string()
         .regex(/^\d{4}-\d{2}-\d{2}$/, "Formato yyyy-MM-dd")
@@ -36,16 +39,7 @@ export function createCheckSlotAvailabilityTool(ctx: AgentToolContext) {
         .describe("Hora solicitada por el cliente, en la zona horaria del negocio."),
     }),
     execute: async ({ service, date, time }) => {
-      const matchedService = ctx.services.find(
-        (s) => s.name.trim().toLowerCase() === service.trim().toLowerCase(),
-      );
-      if (!matchedService) {
-        return {
-          error: `No reconozco el servicio "${service}". Servicios disponibles: ${ctx.services
-            .map((s) => s.name)
-            .join(", ")}.`,
-        };
-      }
+      const matchedService = resolveService(ctx, service);
 
       const startsAtDate = fromZonedTime(`${date}T${time}:00`, ctx.organizationTimezone);
       if (Number.isNaN(startsAtDate.getTime())) {
@@ -58,7 +52,7 @@ export function createCheckSlotAvailabilityTool(ctx: AgentToolContext) {
       // confirmar ("gracias"): el agente volvia a comprobar la hora y le
       // decia que ya no estaba disponible. Aqui se le responde con la verdad.
       if (!ctx.sandbox) {
-        const endsAtDate = new Date(startsAtDate.getTime() + matchedService.duration_minutes * 60_000);
+        const endsAtDate = new Date(startsAtDate.getTime() + matchedService.durationMinutes * 60_000);
         const { data: ownAppointment } = await ctx.admin
           .from("appointments")
           .select("service, starts_at, full_name")
@@ -93,12 +87,12 @@ export function createCheckSlotAvailabilityTool(ctx: AgentToolContext) {
         calendarId: calendarClient.calendarId,
         businessHours: ctx.businessHours,
         startsAt: startsAtDate,
-        durationMinutes: matchedService.duration_minutes,
+        durationMinutes: matchedService.durationMinutes,
         timezone: ctx.organizationTimezone,
       });
 
       if (result.available) {
-        const endsAtDate = new Date(startsAtDate.getTime() + matchedService.duration_minutes * 60_000);
+        const endsAtDate = new Date(startsAtDate.getTime() + matchedService.durationMinutes * 60_000);
         return {
           available: true,
           service: matchedService.name,
@@ -113,7 +107,7 @@ export function createCheckSlotAvailabilityTool(ctx: AgentToolContext) {
         calendar: calendarClient.calendar,
         calendarId: calendarClient.calendarId,
         businessHours: ctx.businessHours,
-        durationMinutes: matchedService.duration_minutes,
+        durationMinutes: matchedService.durationMinutes,
         timezone: ctx.organizationTimezone,
         searchFrom: startsAtDate,
       });

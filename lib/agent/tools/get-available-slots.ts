@@ -4,6 +4,7 @@ import { fromZonedTime } from "date-fns-tz";
 import { getOrgCalendarClient } from "@/lib/google/calendar-client";
 import { getFreeBusySlots } from "@/lib/google/freebusy";
 import type { AgentToolContext } from "./context";
+import { resolveService } from "./resolve-service";
 
 export function createGetAvailableSlotsTool(ctx: AgentToolContext) {
   return tool({
@@ -12,7 +13,9 @@ export function createGetAvailableSlotsTool(ctx: AgentToolContext) {
     inputSchema: z.object({
       service: z
         .string()
-        .describe("Nombre exacto del servicio, tal como aparece en la lista de servicios disponibles."),
+        .describe(
+          "Nombre del servicio de la lista de servicios. Para un tratamiento que el profesional YA le pauto al paciente y no esta en la lista (ej. endodoncia, extraccion, corona), pasa el nombre del tratamiento tal cual.",
+        ),
       days_ahead: z
         .number()
         .int()
@@ -45,17 +48,7 @@ export function createGetAvailableSlotsTool(ctx: AgentToolContext) {
         ),
     }),
     execute: async ({ service, days_ahead, earliest_date, earliest_time, latest_time }) => {
-      const matchedService = ctx.services.find(
-        (s) => s.name.trim().toLowerCase() === service.trim().toLowerCase(),
-      );
-
-      if (!matchedService) {
-        return {
-          error: `No reconozco el servicio "${service}". Servicios disponibles: ${ctx.services
-            .map((s) => s.name)
-            .join(", ")}.`,
-        };
-      }
+      const matchedService = resolveService(ctx, service);
 
       const calendarClient = await getOrgCalendarClient(ctx.admin, ctx.organizationId);
       if (!calendarClient) {
@@ -73,7 +66,7 @@ export function createGetAvailableSlotsTool(ctx: AgentToolContext) {
         calendar: calendarClient.calendar,
         calendarId: calendarClient.calendarId,
         businessHours: ctx.businessHours,
-        durationMinutes: matchedService.duration_minutes,
+        durationMinutes: matchedService.durationMinutes,
         daysAhead: days_ahead ?? 7,
         timezone: ctx.organizationTimezone,
         searchFrom,
@@ -90,7 +83,16 @@ export function createGetAvailableSlotsTool(ctx: AgentToolContext) {
         };
       }
 
-      return { service: matchedService.name, duration_minutes: matchedService.duration_minutes, slots };
+      return {
+        service: matchedService.name,
+        duration_minutes: matchedService.durationMinutes,
+        ...(matchedService.inCatalog
+          ? {}
+          : {
+              note: "Tratamiento fuera de la lista de servicios: solo se puede reservar si el profesional ya se lo pautó al paciente (prescribed_by_professional:true). Si no, reserva la valoración.",
+            }),
+        slots,
+      };
     },
   });
 }
