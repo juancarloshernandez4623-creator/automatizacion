@@ -107,7 +107,30 @@ export async function runAgent({
     agentConfig = row ?? defaultAgentConfigRow(organizationId);
   }
 
-  const systemPrompt = buildSystemPrompt({ agentConfig, organizationTimezone, organizationName });
+  // Citas confirmadas y futuras de este cliente: el historial es solo texto
+  // y no conserva las tool-calls de turnos anteriores, asi que esta es la
+  // unica forma de que el agente sepa que ya reservo (ver
+  // buildSystemPrompt). En el sandbox no hay citas reales que leer.
+  let contactAppointments: { service: string; starts_at: string; full_name: string }[] | undefined;
+  if (!sandbox) {
+    const { data } = await admin
+      .from("appointments")
+      .select("service, starts_at, full_name")
+      .eq("organization_id", organizationId)
+      .eq("contact_id", contactId)
+      .eq("status", "confirmed")
+      .gte("starts_at", new Date().toISOString())
+      .order("starts_at", { ascending: true })
+      .limit(5);
+    contactAppointments = data ?? [];
+  }
+
+  const systemPrompt = buildSystemPrompt({
+    agentConfig,
+    organizationTimezone,
+    organizationName,
+    contactAppointments,
+  });
 
   const history = historyOverride ?? (await loadConversationHistory(admin, conversationId));
 

@@ -52,6 +52,34 @@ export function createCheckSlotAvailabilityTool(ctx: AgentToolContext) {
         return { error: "Fecha u hora inválidas." };
       }
 
+      // Red de seguridad: si ese horario ya es una cita confirmada de ESTE
+      // mismo cliente, el calendario lo daria como "ocupado" -- pero lo
+      // ocupa su propia cita. Pasaba al despedirse el cliente tras
+      // confirmar ("gracias"): el agente volvia a comprobar la hora y le
+      // decia que ya no estaba disponible. Aqui se le responde con la verdad.
+      if (!ctx.sandbox) {
+        const endsAtDate = new Date(startsAtDate.getTime() + matchedService.duration_minutes * 60_000);
+        const { data: ownAppointment } = await ctx.admin
+          .from("appointments")
+          .select("service, starts_at, full_name")
+          .eq("organization_id", ctx.organizationId)
+          .eq("contact_id", ctx.contactId)
+          .eq("status", "confirmed")
+          .lt("starts_at", endsAtDate.toISOString())
+          .gt("ends_at", startsAtDate.toISOString())
+          .limit(1)
+          .maybeSingle();
+
+        if (ownAppointment) {
+          return {
+            already_booked_by_this_client: true,
+            appointment: ownAppointment,
+            note:
+              "Este horario YA ES una cita confirmada de este mismo cliente. No es un problema de disponibilidad: no le digas que no está disponible. Si solo estaba agradeciendo o despidiéndose, despídete amablemente; si pregunta por su cita, confírmale que sigue en pie.",
+          };
+        }
+      }
+
       const calendarClient = await getOrgCalendarClient(ctx.admin, ctx.organizationId);
       if (!calendarClient) {
         return {

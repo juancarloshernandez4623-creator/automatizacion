@@ -21,6 +21,25 @@ function formatBusinessHours(hours: BusinessHours): string {
   }).join("\n");
 }
 
+/** Cita confirmada del cliente actual, leida de la BD en cada turno (ver runAgent). */
+export type ContactAppointment = {
+  service: string;
+  starts_at: string;
+  full_name: string;
+};
+
+function formatContactAppointments(appointments: ContactAppointment[], timezone: string): string {
+  if (appointments.length === 0) {
+    return "Este cliente no tiene ninguna cita confirmada pendiente ahora mismo.";
+  }
+  return appointments
+    .map(
+      (a) =>
+        `- ${a.service} — ${formatInTimeZone(new Date(a.starts_at), timezone, "EEEE d 'de' MMMM 'a las' HH:mm")} — a nombre de ${a.full_name} (CONFIRMADA, ya registrada en el calendario)`,
+    )
+    .join("\n");
+}
+
 function formatBusinessInfo(info: BusinessInfo): string {
   const lines = [
     info.address && `Dirección: ${info.address}`,
@@ -42,10 +61,21 @@ export function buildSystemPrompt({
   agentConfig,
   organizationTimezone,
   organizationName,
+  contactAppointments,
 }: {
   agentConfig: AgentConfigRow;
   organizationTimezone: string;
   organizationName: string;
+  /**
+   * Citas confirmadas y futuras de ESTE cliente, leidas de la BD. Es la
+   * unica forma de que el agente sepa, en un turno posterior, que una cita
+   * ya se creo: el historial que recibe es solo texto (no conserva las
+   * tool-calls de turnos anteriores, ver message-history.ts), asi que sin
+   * esto, ante un simple "gracias" tras confirmar, volvia a comprobar la
+   * hora, la encontraba ocupada por su propia cita y le decia al cliente que
+   * ya no estaba disponible. `undefined` en el sandbox (no hay citas reales).
+   */
+  contactAppointments?: ContactAppointment[];
 }): string {
   const businessInfo = agentConfig.business_info as unknown as BusinessInfo;
   const services = agentConfig.services as unknown as Service[];
@@ -69,7 +99,15 @@ ${formatBusinessHours(businessHours)}
 
 ## Contexto temporal
 Ahora mismo es: ${nowLabel} (zona horaria ${organizationTimezone}). Usa esta referencia para entender expresiones relativas del cliente como "mañana" o "la próxima semana".
-
+${
+  contactAppointments
+    ? `
+## Citas ya confirmadas de este cliente (dato real del sistema)
+${formatContactAppointments(contactAppointments, organizationTimezone)}
+Esta lista es la verdad: si una cita aparece aquí, YA ESTÁ creada y garantizada, aunque en el historial de mensajes no veas ninguna comprobación. Nunca vuelvas a comprobar su disponibilidad ni a reservarla de nuevo.
+`
+    : ""
+}
 ## Flujo de atención (sigue este orden)
 1. Si es el primer mensaje del hilo o ha pasado bastante tiempo desde el último, saluda brevemente y pregunta el motivo de contacto.
 2. Si el cliente quiere agendar una cita, pregunta qué servicio necesita (de la lista de arriba).
@@ -79,7 +117,7 @@ Ahora mismo es: ${nowLabel} (zona horaria ${organizationTimezone}). Usa esta ref
 3c. REGLA ABSOLUTA, con una única excepción (ver 5b): en cuanto el cliente mencione una fecha/hora exacta que esté PROPONIENDO O PIDIENDO (no simplemente repitiendo una cita que ya quedó confirmada) y que no sea, palabra por palabra, una de las 3 que TÚ le acabas de ofrecer en tu mensaje anterior (aunque sea muy parecida, aunque a ti te "parezca" obviamente dentro o fuera de horario, aunque el cliente solo cambie la hora y mantenga el día) -- tu ÚNICO siguiente paso permitido es llamar a la tool check_slot_availability con esa fecha/hora exacta, ANTES de escribir ninguna palabra de respuesta sobre si está disponible o no. Tienes terminantemente prohibido escribir "no está disponible", "no tenemos hueco", "por desgracia no puede ser" o cualquier frase equivalente basándote en tu propio juicio, memoria de la conversación o en que esa hora no coincida con las que ya sugeriste -- eso es exactamente el fallo que este sistema existe para evitar. Solo puedes confirmar el horario si la tool devuelve available:true, y solo puedes descartarlo si devuelve available:false, citando el motivo que te da la tool.
 4. Recolecta los datos que falten: nombre completo del cliente y si es paciente nuevo (si aplica al negocio). El teléfono ya lo tienes automáticamente, nunca lo preguntes. Usa save_contact_info para guardar el nombre y si es nuevo paciente en cuanto el cliente te los diga.
 5. Cuando tengas servicio + horario elegido (uno de los sugeridos, o uno propuesto por el cliente y confirmado con available:true por check_slot_availability) + nombre completo, confirma verbalmente con el cliente y luego llama a book_appointment usando EXACTAMENTE el valor starts_at que devolvió esa tool -- nunca lo reescribas ni lo recalcules a mano. Si book_appointment devuelve un error, es una comprobación real (el horario dejó de estar libre): discúlpate brevemente y ofrece las alternativas que te devuelva, nunca lo repitas como si nada hubiera pasado.
-5b. EXCEPCIÓN a la regla 3c, e igual de importante: una vez que book_appointment ya devolvió success:true en esta conversación, esa cita YA EXISTE y está garantizada -- no hay nada más que comprobar sobre ese horario. Si después de eso el cliente simplemente da las gracias, se despide, dice "vale"/"perfecto"/"genial" o repite la fecha/hora ya confirmada solo para cerrar el tema (ej. "entonces nos vemos el jueves a las 17:30, gracias"), eso NO es una nueva petición ni una fecha/hora que debas comprobar de nuevo: es el cliente cerrando la conversación. En ese caso NUNCA vuelvas a llamar a check_slot_availability ni a book_appointment para ese mismo horario -- limítate a responder amablemente (ej. "¡perfecto, nos vemos entonces! Que tengas buen día.") y terminar ahí. Si literalmente vuelves a comprobar la disponibilidad de una cita que tú mismo acabas de crear, por supuesto te saldrá "ocupado" (la ocupa la propia cita que creaste), y decírselo al cliente como si fuera un problema es un error grave que confunde y molesta a alguien que ya tiene su cita confirmada.
+5b. EXCEPCIÓN a la regla 3c, e igual de importante: una vez que una cita está confirmada -- porque aparece en "Citas ya confirmadas de este cliente", o porque book_appointment devolvió success:true en este mismo turno, o porque tu último mensaje fue la confirmación de la cita ("¡Cita confirmada!") -- esa cita YA EXISTE y está garantizada: no hay nada más que comprobar sobre ese horario. Si después de eso el cliente simplemente da las gracias, se despide, dice "vale"/"perfecto"/"genial" o repite la fecha/hora ya confirmada solo para cerrar el tema (ej. "entonces nos vemos el jueves a las 17:30, gracias"), eso NO es una nueva petición ni una fecha/hora que debas comprobar de nuevo: es el cliente cerrando la conversación. En ese caso NUNCA llames a ninguna tool -- limítate a despedirte amablemente en una frase corta (ej. "¡Gracias a ti! Nos vemos el martes. Que tengas buen día 😊") y terminar ahí, sin añadir preguntas ni ofrecer nada más. Si literalmente vuelves a comprobar la disponibilidad de una cita que tú mismo acabas de crear, por supuesto te saldrá "ocupado" (la ocupa la propia cita que creaste), y decírselo al cliente como si fuera un problema es un error grave que confunde y molesta a alguien que ya tiene su cita confirmada.
 6. Si el cliente pide hablar con una persona, se molesta, o el mensaje no lo puedes resolver con la información que tienes, llama a request_human_handoff y despídete brevemente explicando que un humano seguirá la conversación.
 7. Responde siempre en español, en mensajes cortos apropiados para WhatsApp (evita párrafos largos).`;
 }
