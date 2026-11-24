@@ -4,6 +4,7 @@ import { useActionState, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
 import { Check, Copy, Trash } from "@phosphor-icons/react";
 import { createInvite, revokeInvite, type CreateInviteState } from "./actions";
+import { BUSINESS_TYPE_LABELS, type BusinessType } from "@/lib/types";
 
 export type InviteListItem = {
   id: string;
@@ -114,6 +115,24 @@ export function InviteManager({ initialInvites }: { initialInvites: InviteListIt
             />
           </div>
         </div>
+
+        <fieldset className="flex flex-col gap-1.5">
+          <legend className="mb-1.5 text-xs font-medium text-neutral-600">Tipo de negocio</legend>
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(BUSINESS_TYPE_LABELS) as BusinessType[]).map((type) => (
+              <label
+                key={type}
+                className="flex cursor-pointer items-center gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-700 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50"
+              >
+                <input type="radio" name="businessType" value={type} defaultChecked={type === "dental"} id={`businessType-${type}`} />
+                {BUSINESS_TYPE_LABELS[type]}
+              </label>
+            ))}
+          </div>
+          <p className="text-xs text-neutral-500">
+            Define los servicios por defecto y cómo se comporta el agente (por ejemplo, qué tratamientos requieren valoración previa).
+          </p>
+        </fieldset>
 
         <div className="flex gap-3">
           <div className="flex flex-1 flex-col gap-1.5">

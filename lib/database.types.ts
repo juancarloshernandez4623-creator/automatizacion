@@ -29,6 +29,7 @@ export type Database = {
           name: string;
           slug: string;
           timezone: string;
+          business_type: "dental" | "aesthetic";
           created_at: string;
         };
         Insert: {
@@ -36,6 +37,7 @@ export type Database = {
           name: string;
           slug: string;
           timezone?: string;
+          business_type?: "dental" | "aesthetic";
           created_at?: string;
         };
         Update: {
@@ -43,6 +45,7 @@ export type Database = {
           name?: string;
           slug?: string;
           timezone?: string;
+          business_type?: "dental" | "aesthetic";
           created_at?: string;
         };
         Relationships: [];

@@ -39,6 +39,10 @@ export async function createInvite(
   const fullName = String(formData.get("fullName") ?? "").trim();
   const organizationName = String(formData.get("organizationName") ?? "").trim();
   const label = String(formData.get("label") ?? "").trim() || null;
+  // El trigger private.handle_new_user() (migracion 0018) guarda este tipo
+  // en organizations.business_type y crea los servicios por defecto del
+  // sector. Cualquier valor desconocido se trata como "dental".
+  const businessType = formData.get("businessType") === "aesthetic" ? "aesthetic" : "dental";
   const expiresInDaysRaw = String(formData.get("expiresInDays") ?? "").trim();
   const expiresInDays = expiresInDaysRaw ? Number(expiresInDaysRaw) : null;
 
@@ -73,7 +77,7 @@ export async function createInvite(
       email: loginEmail,
       password: code,
       email_confirm: true,
-      user_metadata: { full_name: fullName, organization_name: organizationName },
+      user_metadata: { full_name: fullName, organization_name: organizationName, business_type: businessType },
     });
 
     if (createUserError || !created.user) {

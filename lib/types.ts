@@ -49,6 +49,30 @@ export const SERVICE_BOOKING_LABELS: Record<ServiceBooking, string> = {
   after_assessment: "Requiere diagnóstico previo",
 };
 
+/**
+ * Sector del negocio (`organizations.business_type`). Cambia los servicios
+ * por defecto, los textos de /personalizacion y las reglas del agente. Las
+ * organizaciones creadas antes de existir este campo son "dental".
+ */
+export type BusinessType = "dental" | "aesthetic";
+
+export const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
+  dental: "Clínica dental",
+  aesthetic: "Clínica o centro estético",
+};
+
+/** Etiquetas del tipo de reserva segun el sector (dental = las de siempre). */
+export function serviceBookingLabels(type: BusinessType): Record<ServiceBooking, string> {
+  if (type === "aesthetic") {
+    return {
+      direct: "Reserva directa",
+      assessment: "Primera consulta / valoración",
+      after_assessment: "Requiere valoración médica previa",
+    };
+  }
+  return SERVICE_BOOKING_LABELS;
+}
+
 export type Service = {
   name: string;
   duration_minutes: number;

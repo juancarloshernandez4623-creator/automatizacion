@@ -33,4 +33,6 @@ export type AgentToolContext = {
    * modelo) y detener el envio de mas mensajes automaticos.
    */
   handoffState: { triggered: boolean; reason?: string };
+  /** Sector del negocio: solo cambia la redaccion de algunos mensajes de las tools. */
+  businessType: "dental" | "aesthetic";
 };

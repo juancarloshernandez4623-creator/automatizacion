@@ -1,4 +1,4 @@
-import type { BusinessHours, BusinessInfo, Service } from "@/lib/types";
+import type { BusinessHours, BusinessInfo, BusinessType, Service } from "@/lib/types";
 
 /**
  * Valores por defecto orientados a una clinica dental, usados como:
@@ -36,6 +36,48 @@ export const DEFAULT_SERVICES: Service[] = [
   { name: "empaste", duration_minutes: 45, description: "Empaste dental", booking: "after_assessment" },
   { name: "blanqueamiento", duration_minutes: 60, description: "Blanqueamiento dental", booking: "after_assessment" },
 ];
+
+/**
+ * Servicios por defecto de un centro estetico. Los tratamientos medico-
+ * esteticos (inyectables, peelings medicos) requieren valoracion medica
+ * previa la primera vez; los esteticos no medicos se reservan directamente.
+ * MANTENER EN SYNC con supabase/migrations/0018_business_type.sql.
+ */
+export const DEFAULT_SERVICES_AESTHETIC: Service[] = [
+  {
+    name: "primera consulta / valoración",
+    duration_minutes: 30,
+    description: "Consulta con el médico estético para valorar el tratamiento adecuado y descartar contraindicaciones",
+    booking: "assessment",
+  },
+  { name: "limpieza facial", duration_minutes: 60, description: "Higiene facial profunda", booking: "direct" },
+  { name: "depilación láser", duration_minutes: 30, description: "Sesión de depilación láser", booking: "direct" },
+  {
+    name: "tratamiento corporal",
+    duration_minutes: 60,
+    description: "Presoterapia, radiofrecuencia o tratamientos reductores",
+    booking: "direct",
+  },
+  { name: "toxina botulínica (bótox)", duration_minutes: 30, description: "Arrugas de expresión", booking: "after_assessment" },
+  { name: "ácido hialurónico (rellenos)", duration_minutes: 45, description: "Labios, surcos y pómulos", booking: "after_assessment" },
+  { name: "mesoterapia / peeling médico", duration_minutes: 45, description: "Rejuvenecimiento médico de la piel", booking: "after_assessment" },
+];
+
+export function defaultServicesFor(type: BusinessType): Service[] {
+  return type === "aesthetic" ? DEFAULT_SERVICES_AESTHETIC : DEFAULT_SERVICES;
+}
+
+/** Valoracion que se usa si la clinica no ha configurado una propia (ver run-agent.ts). */
+export function fallbackAssessmentFor(type: BusinessType): Service {
+  return type === "aesthetic"
+    ? DEFAULT_SERVICES_AESTHETIC[0]!
+    : {
+        name: "primera visita / valoración",
+        duration_minutes: 30,
+        description: "Exploración y diagnóstico para pacientes nuevos o con dolor/molestias",
+        booking: "assessment",
+      };
+}
 
 export const DEFAULT_BUSINESS_HOURS: BusinessHours = {
   mon: [{ start: "09:00", end: "18:00" }],

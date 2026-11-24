@@ -2,7 +2,7 @@ import { generateText, stepCountIs, type ModelMessage } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json, Tables } from "@/lib/database.types";
-import type { AgentConfigFormValues, BusinessHours, BusinessInfo, Service } from "@/lib/types";
+import type { AgentConfigFormValues, BusinessHours, BusinessInfo, BusinessType, Service } from "@/lib/types";
 import { DEFAULT_PRESCRIBED_TREATMENT_MINUTES } from "./tools/resolve-service";
 import { buildSystemPrompt, type ContactAppointment } from "./build-system-prompt";
 import { loadConversationHistory } from "./message-history";
@@ -14,21 +14,21 @@ import {
   DEFAULT_SERVICES,
   DEFAULT_SYSTEM_PROMPT,
   DEFAULT_TONE,
+  defaultServicesFor,
+  fallbackAssessmentFor,
 } from "./default-templates";
 
-/** Servicio de valoracion que se usa si la clinica no ha configurado uno propio. */
-const FALLBACK_ASSESSMENT: Service = {
-  name: "primera visita / valoración",
-  duration_minutes: 30,
-  description: "Exploración y diagnóstico para pacientes nuevos o con dolor/molestias",
-  booking: "assessment",
-};
-
-function withAssessmentFallback(rawServices: Json): Service[] {
+/**
+ * Si la clinica tiene tratamientos que requieren valoracion previa pero no
+ * configuro ningun servicio de valoracion, se anade uno por defecto del
+ * sector (dental: "primera visita / valoración"; estetica: "primera
+ * consulta / valoración").
+ */
+function withAssessmentFallback(rawServices: Json, businessType: BusinessType): Service[] {
   const services = (rawServices as unknown as Service[]) ?? [];
   const needsAssessment = services.some((s) => s.booking === "after_assessment");
   const hasAssessment = services.some((s) => s.booking === "assessment");
-  return needsAssessment && !hasAssessment ? [FALLBACK_ASSESSMENT, ...services] : services;
+  return needsAssessment && !hasAssessment ? [fallbackAssessmentFor(businessType), ...services] : services;
 }
 
 export type RunAgentResult = {
@@ -54,13 +54,13 @@ function agentConfigRowFromOverride(
   };
 }
 
-function defaultAgentConfigRow(organizationId: string): AgentConfigRow {
+function defaultAgentConfigRow(organizationId: string, businessType: BusinessType): AgentConfigRow {
   return {
     organization_id: organizationId,
     system_prompt: DEFAULT_SYSTEM_PROMPT,
     tone: DEFAULT_TONE,
     business_info: DEFAULT_BUSINESS_INFO as unknown as Json,
-    services: DEFAULT_SERVICES as unknown as Json,
+    services: (businessType === "dental" ? DEFAULT_SERVICES : defaultServicesFor(businessType)) as unknown as Json,
     business_hours: DEFAULT_BUSINESS_HOURS as unknown as Json,
     handoff_message: DEFAULT_HANDOFF_MESSAGE,
     updated_at: new Date().toISOString(),
@@ -98,11 +98,24 @@ export async function runAgent({
    */
   agentConfigOverride?: AgentConfigFormValues;
 }): Promise<RunAgentResult> {
-  const { data: org } = await admin
-    .from("organizations")
-    .select("name, timezone")
-    .eq("id", organizationId)
-    .single();
+  // business_type puede no existir aun si la migracion 0018 no se ha
+  // aplicado: en ese caso se repite la consulta sin ella y el negocio se
+  // trata como dental (el comportamiento de siempre).
+  let org: { name: string; timezone: string; business_type?: BusinessType } | null = null;
+  {
+    const withType = await admin
+      .from("organizations")
+      .select("name, timezone, business_type")
+      .eq("id", organizationId)
+      .single();
+    if (!withType.error) {
+      org = withType.data;
+    } else {
+      const basic = await admin.from("organizations").select("name, timezone").eq("id", organizationId).single();
+      org = basic.data;
+    }
+  }
+  const businessType: BusinessType = org?.business_type === "aesthetic" ? "aesthetic" : "dental";
 
   // Mismo patron que organizationName justo abajo: si el sandbox manda un
   // override, gana sobre el de BD, para que el chat de prueba calcule
@@ -120,7 +133,7 @@ export async function runAgent({
       .select("*")
       .eq("organization_id", organizationId)
       .maybeSingle();
-    agentConfig = row ?? defaultAgentConfigRow(organizationId);
+    agentConfig = row ?? defaultAgentConfigRow(organizationId, businessType);
   }
 
   // Citas confirmadas y futuras de este cliente: el historial es solo texto
@@ -157,13 +170,14 @@ export async function runAgent({
   // no configuro ningun servicio de valoracion, se anade uno por defecto:
   // el agente siempre tiene que poder reservar algo cuando el paciente tiene
   // una molestia (antes, en ese caso, pasaba la conversacion a un humano).
-  agentConfig = { ...agentConfig, services: withAssessmentFallback(agentConfig.services) as unknown as Json };
+  agentConfig = { ...agentConfig, services: withAssessmentFallback(agentConfig.services, businessType) as unknown as Json };
 
   const systemPrompt = buildSystemPrompt({
     agentConfig,
     organizationTimezone,
     organizationName,
     contactAppointments,
+    businessType,
   });
 
   const history = historyOverride ?? (await loadConversationHistory(admin, conversationId));
@@ -188,6 +202,7 @@ export async function runAgent({
     contactPhone,
     sandbox,
     handoffState,
+    businessType,
   });
 
   const result = await generateText({

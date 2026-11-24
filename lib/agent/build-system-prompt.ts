@@ -1,6 +1,6 @@
 import { formatInTimeZone } from "date-fns-tz";
 import type { Tables } from "@/lib/database.types";
-import type { BusinessHours, BusinessInfo, Service } from "@/lib/types";
+import type { BusinessHours, BusinessInfo, BusinessType, Service } from "@/lib/types";
 import { WEEKDAY_LABELS, WEEKDAYS } from "@/lib/types";
 
 type AgentConfigRow = Tables<"agent_configs">;
@@ -11,16 +11,61 @@ const BOOKING_TAG: Record<NonNullable<Service["booking"]>, string> = {
   after_assessment: "SOLO si el profesional ya lo indicó (requiere diagnóstico previo)",
 };
 
-function formatServices(services: Service[]): string {
+// Etiquetas equivalentes para centros esteticos (la valoracion es medica y
+// el "ya indicado" incluye a los clientes que repiten un tratamiento).
+const BOOKING_TAG_AESTHETIC: Record<NonNullable<Service["booking"]>, string> = {
+  direct: "reserva directa",
+  assessment: "PRIMERA CONSULTA / VALORACIÓN",
+  after_assessment: "SOLO si ya se valoró al cliente o ya se lo ha hecho aquí (requiere valoración médica previa)",
+};
+
+function formatServices(services: Service[], businessType: BusinessType = "dental"): string {
   if (services.length === 0) return "(sin servicios configurados)";
+  const tags = businessType === "aesthetic" ? BOOKING_TAG_AESTHETIC : BOOKING_TAG;
   return services
     .map(
       (s) =>
-        `- ${s.name} (${s.duration_minutes} min) [${BOOKING_TAG[s.booking ?? "direct"]}]${
+        `- ${s.name} (${s.duration_minutes} min) [${tags[s.booking ?? "direct"]}]${
           s.description ? `: ${s.description}` : ""
         }`,
     )
     .join("\n");
+}
+
+/**
+ * Paso 2 del flujo para centros esteticos. Misma metodologia que la dental
+ * (valoracion cuando no hay indicacion previa, reserva directa de lo que no
+ * la necesita, tratamientos ya pautados fuera de lista), con las reglas del
+ * sector: la valoracion es medica y solo para tratamientos medico-
+ * esteticos, y los clientes que repiten no necesitan volver a valorarse.
+ */
+function aestheticBookingRule(services: Service[]): string {
+  const assessment = services.find((s) => s.booking === "assessment");
+  const medical = services.filter((s) => s.booking === "after_assessment");
+  const direct = services.filter((s) => (s.booking ?? "direct") === "direct");
+  const assessmentName = assessment?.name ?? "primera consulta / valoración";
+
+  return `2. Si el cliente quiere una cita, pregúntale qué tratamiento le interesa o qué le gustaría mejorar, y elige tú el servicio adecuado de la lista de arriba.
+2b. REGLA DE VALORACIÓN (centro estético), MUY IMPORTANTE:
+   - Tratamientos estéticos sin componente médico${
+     direct.length > 0 ? ` (en tu lista: ${direct.map((s) => s.name).join(", ")})` : ""
+   }: resérvalos directamente.
+   - Tratamientos médico-estéticos${
+     medical.length > 0 ? ` (en tu lista: ${medical.map((s) => s.name).join(", ")})` : ""
+   } y cualquier otro tratamiento médico-estético aunque no esté en la lista (bótox, rellenos de ácido hialurónico, hilos tensores, mesoterapia, peelings médicos, plasma rico en plaquetas, láser médico...): la PRIMERA vez requieren una valoración médica para revisar contraindicaciones y el resultado que busca. Resérvale el servicio "${assessmentName}" y explícaselo con naturalidad (ej. "Para el ácido hialurónico, lo primero es una consulta con la doctora para valorar la zona y lo que buscas; ¿te busco hueco?").
+   - EXCEPCIÓN: si el cliente dice que YA se ha hecho ese tratamiento en este centro o que el médico ya se lo pautó (ej. "vengo a mi retoque de bótox", "es la segunda sesión", "ya me valoró la doctora"), resérvale directamente ese tratamiento y pasa prescribed_by_professional:true a book_appointment. Si no está en la lista, pásalo con su nombre tal cual (ej. service "hilos tensores") a get_available_slots / check_slot_availability / book_appointment; el sistema le asigna la duración adecuada.
+   - Si no sabe qué tratamiento necesita o duda entre varios ("quiero mejorar las ojeras", "algo para las arrugas", "¿qué me recomendáis para la flacidez?"), resérvale la valoración.
+   - Nunca recomiendes un tratamiento concreto como si fuera una indicación médica ni prometas resultados.`;
+}
+
+function aestheticSectorRules(): string {
+  return `
+## Reglas del sector estético
+- Precios: muchos clientes preguntan primero el precio. Si está en la información del negocio o en la descripción del servicio, dalo. Si no, explica que depende de la zona y de lo que necesite, que se lo indican en la valoración, y ofrécele reservarla. Nunca inventes precios, y no digas que la valoración es gratuita o "sin compromiso" salvo que lo indique la información del negocio.
+- Salud: si menciona embarazo, lactancia, alergias, medicación, una enfermedad o un problema en la piel de la zona (heridas, infección, una reacción a un tratamiento anterior), no le des consejo médico: resérvale la valoración para que le vea el médico. Si describe algo grave o urgente tras un tratamiento (hinchazón importante, dificultad para respirar, dolor intenso, cambio de color de la piel), dile que acuda a urgencias o llame al 112 y que avise también a la clínica.
+- Menores de edad: para tratamientos médico-estéticos resérvales siempre la valoración (requieren autorización de sus padres o tutores).
+- Trato cercano y discreto: muchos clientes prefieren no dar detalles por escrito; no insistas en el motivo más allá de lo necesario para elegir el servicio.
+`;
 }
 
 function assessmentRule(services: Service[]): string {
@@ -94,10 +139,17 @@ export function buildSystemPrompt({
   organizationTimezone,
   organizationName,
   contactAppointments,
+  businessType = "dental",
 }: {
   agentConfig: AgentConfigRow;
   organizationTimezone: string;
   organizationName: string;
+  /**
+   * Sector del negocio. "dental" produce exactamente el prompt de siempre;
+   * "aesthetic" cambia solo el paso 2 (reglas de valoracion) y anade las
+   * reglas del sector. El resto del flujo de reserva es comun.
+   */
+  businessType?: BusinessType;
   /**
    * Citas confirmadas y futuras de ESTE cliente, leidas de la BD. Es la
    * unica forma de que el agente sepa, en un turno posterior, que una cita
@@ -124,7 +176,7 @@ Tono de voz: ${agentConfig.tone}.
 ${formatBusinessInfo(businessInfo)}
 
 ## Servicios disponibles
-${formatServices(services)}
+${formatServices(services, businessType)}
 
 ## Horario de atención (zona horaria: ${organizationTimezone})
 ${formatBusinessHours(businessHours)}
@@ -139,11 +191,13 @@ ${formatContactAppointments(contactAppointments, organizationTimezone)}
 Esta lista es la verdad: si una cita aparece aquí, YA ESTÁ creada y garantizada, aunque en el historial de mensajes no veas ninguna comprobación. Nunca vuelvas a comprobar su disponibilidad ni a reservarla de nuevo.
 `
     : ""
-}
+}${businessType === "aesthetic" ? aestheticSectorRules() : ""}
 ## Flujo de atención (sigue este orden)
 1. Si es el primer mensaje del hilo o ha pasado bastante tiempo desde el último, saluda brevemente y pregunta el motivo de contacto.
 ${
-  services.some((s) => s.booking === "after_assessment" || s.booking === "assessment")
+  businessType === "aesthetic"
+    ? aestheticBookingRule(services)
+    : services.some((s) => s.booking === "after_assessment" || s.booking === "assessment")
     ? `2. Si el cliente quiere agendar una cita, pregúntale qué le pasa o qué necesita (no le enseñes la lista de tratamientos para que elija como si fuera un menú) y decide tú el servicio adecuado de la lista de arriba.${assessmentRule(services)}`
     : "2. Si el cliente quiere agendar una cita, pregunta qué servicio necesita (de la lista de arriba)."
 }

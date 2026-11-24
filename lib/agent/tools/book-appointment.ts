@@ -58,6 +58,14 @@ export function createBookAppointmentTool(ctx: AgentToolContext) {
 
       if (matchedService.booking === "after_assessment" && !prescribed_by_professional && !isReschedule) {
         const assessment = ctx.services.find((s) => s.booking === "assessment");
+        if (ctx.businessType === "aesthetic") {
+          return {
+            error: `"${matchedService.name}" es un tratamiento médico-estético: la primera vez requiere valoración médica y el cliente no ha dicho que ya se lo haya hecho aquí ni que se lo hayan pautado.`,
+            what_to_do: `Reserva en su lugar "${assessment?.name ?? "primera consulta / valoración"}"${
+              assessment ? ` (${assessment.duration_minutes} min)` : ""
+            }. Comprueba antes la disponibilidad para esa duración y explícale con naturalidad que primero el médico valora la zona, las contraindicaciones y el resultado que busca.`,
+          };
+        }
         return {
           error: `"${matchedService.name}" requiere diagnóstico previo del profesional y el paciente no ha dicho que se lo hayan indicado.`,
           what_to_do: assessment

@@ -4,10 +4,11 @@ import { useActionState, useState } from "react";
 import { CheckCircle, Plus, Trash, WarningCircle } from "@phosphor-icons/react";
 import {
   COMMON_TIMEZONES,
-  SERVICE_BOOKING_LABELS,
+  serviceBookingLabels,
   WEEKDAYS,
   WEEKDAY_LABELS,
   type AgentConfigFormValues,
+  type BusinessType,
   type Service,
   type ServiceBooking,
   type TimeRange,
@@ -24,7 +25,16 @@ function labelClass() {
   return "mb-1 block text-xs font-medium text-neutral-600";
 }
 
-export function AgentConfigForm({ initialValues }: { initialValues: AgentConfigFormValues }) {
+export function AgentConfigForm({
+  initialValues,
+  businessType = "dental",
+}: {
+  initialValues: AgentConfigFormValues;
+  /** Sector del negocio: adapta etiquetas y textos de ayuda (dental = los de siempre). */
+  businessType?: BusinessType;
+}) {
+  const bookingLabels = serviceBookingLabels(businessType);
+  const isAesthetic = businessType === "aesthetic";
   const [values, setValues] = useState<AgentConfigFormValues>(initialValues);
   const [state, dispatch, isPending] = useActionState<SaveAgentConfigState, FormData>(
     saveAgentConfig,
@@ -50,7 +60,7 @@ export function AgentConfigForm({ initialValues }: { initialValues: AgentConfigF
       ...prev,
       services: [
         ...prev.services,
-        { name: "", duration_minutes: 30, description: "", booking: "after_assessment" },
+        { name: "", duration_minutes: 30, description: "", booking: isAesthetic ? "direct" : "after_assessment" },
       ],
     }));
   }
@@ -200,19 +210,30 @@ export function AgentConfigForm({ initialValues }: { initialValues: AgentConfigF
             </button>
           </div>
 
-          <p className="mb-4 text-xs text-neutral-500">
-            El paciente no puede diagnosticarse solo. Marca como <strong>«Requiere diagnóstico
-            previo»</strong> los tratamientos que decide el profesional (empastes, endodoncias…): si
-            el paciente tiene dolor o no sabe qué necesita, el agente le reservará la{" "}
-            <strong>primera visita / valoración</strong> en su lugar.
-          </p>
+          {isAesthetic ? (
+            <p className="mb-4 text-xs text-neutral-500">
+              Marca como <strong>«Requiere valoración médica previa»</strong> los tratamientos
+              médico-estéticos (bótox, rellenos, hilos, peelings médicos…): la primera vez el agente
+              reservará la <strong>primera consulta / valoración</strong>, y a los clientes que ya se
+              lo han hecho aquí les reservará directamente el tratamiento. Los tratamientos sin
+              componente médico (limpieza facial, depilación, masajes…) van como{" "}
+              <strong>«Reserva directa»</strong>.
+            </p>
+          ) : (
+            <p className="mb-4 text-xs text-neutral-500">
+              El paciente no puede diagnosticarse solo. Marca como <strong>«Requiere diagnóstico
+              previo»</strong> los tratamientos que decide el profesional (empastes, endodoncias…): si
+              el paciente tiene dolor o no sabe qué necesita, el agente le reservará la{" "}
+              <strong>primera visita / valoración</strong> en su lugar.
+            </p>
+          )}
 
           {values.services.some((s) => s.booking === "after_assessment") &&
             !values.services.some((s) => s.booking === "assessment") && (
               <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                Tienes tratamientos que requieren diagnóstico previo pero ningún servicio de tipo{" "}
-                <strong>«Primera visita / valoración»</strong>. Añádelo para fijar su duración; mientras
-                tanto, el agente reservará una valoración de 30 minutos.
+                Tienes tratamientos que requieren {isAesthetic ? "valoración médica" : "diagnóstico"} previo
+                pero ningún servicio de tipo <strong>«{bookingLabels.assessment}»</strong>. Añádelo para fijar
+                su duración; mientras tanto, el agente reservará una valoración de 30 minutos.
               </p>
             )}
 
@@ -238,9 +259,9 @@ export function AgentConfigForm({ initialValues }: { initialValues: AgentConfigF
                     className={inputClass()}
                     aria-label="Cómo se reserva este servicio"
                   >
-                    {(Object.keys(SERVICE_BOOKING_LABELS) as ServiceBooking[]).map((key) => (
+                    {(Object.keys(bookingLabels) as ServiceBooking[]).map((key) => (
                       <option key={key} value={key}>
-                        {SERVICE_BOOKING_LABELS[key]}
+                        {bookingLabels[key]}
                       </option>
                     ))}
                   </select>
@@ -291,9 +312,11 @@ export function AgentConfigForm({ initialValues }: { initialValues: AgentConfigF
               />
             </div>
             <p className="min-w-0 flex-1 text-xs text-neutral-500">
-              <strong>Otros tratamientos ya pautados.</strong> Si un paciente dice que el profesional
-              ya le pautó un tratamiento que no está en la lista (endodoncia, extracción, corona…), el
-              agente lo reserva con ese nombre y esta duración, marcada como «estimada» para que
+              <strong>Otros tratamientos ya pautados.</strong>{" "}
+              {isAesthetic
+                ? "Si un cliente dice que ya se hizo aquí un tratamiento que no está en la lista (hilos tensores, plasma, láser…), o que el médico se lo pautó,"
+                : "Si un paciente dice que el profesional ya le pautó un tratamiento que no está en la lista (endodoncia, extracción, corona…),"}{" "}
+              el agente lo reserva con ese nombre y esta duración, marcada como «estimada» para que
               recepción la revise.
             </p>
           </div>
