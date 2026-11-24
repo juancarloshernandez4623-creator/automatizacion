@@ -11,6 +11,7 @@ import {
   DEFAULT_TONE,
 } from "@/lib/agent/default-templates";
 import { AgentConfigForm } from "./agent-config-form";
+import { BusinessTypeSwitcher } from "./business-type-switcher";
 
 export default async function PersonalizacionPage() {
   const { supabase, organizationId } = await requireCurrentOrg();
@@ -59,7 +60,16 @@ export default async function PersonalizacionPage() {
         </p>
       </div>
 
-      <AgentConfigForm initialValues={initialValues} businessType={businessType} />
+      <BusinessTypeSwitcher current={businessType} />
+
+      {/* key: si se cambia el tipo o se cargan los servicios por defecto, el
+          formulario se reinicia con los valores nuevos de la BD (guarda su
+          propio estado local y no se actualizaria solo). */}
+      <AgentConfigForm
+        key={`${businessType}-${config?.updated_at ?? "new"}`}
+        initialValues={initialValues}
+        businessType={businessType}
+      />
     </div>
   );
 }

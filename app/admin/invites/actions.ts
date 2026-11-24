@@ -6,6 +6,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { generateInviteCode } from "@/lib/auth/invite-code";
 import { deriveLoginEmail } from "@/lib/auth/access-code-email";
 import { logger } from "@/lib/logger";
+import { DEFAULT_SERVICES_AESTHETIC } from "@/lib/agent/default-templates";
+import type { Json } from "@/lib/database.types";
 
 export type CreateInviteState = { error?: string; createdCode?: string };
 
@@ -40,9 +42,14 @@ export async function createInvite(
   const organizationName = String(formData.get("organizationName") ?? "").trim();
   const label = String(formData.get("label") ?? "").trim() || null;
   // El trigger private.handle_new_user() (migracion 0018) guarda este tipo
-  // en organizations.business_type y crea los servicios por defecto del
-  // sector. Cualquier valor desconocido se trata como "dental".
-  const businessType = formData.get("businessType") === "aesthetic" ? "aesthetic" : "dental";
+  // en organizations.business_type. Es obligatorio elegirlo: antes venia
+  // marcado "dental" por defecto y era facil crear un centro estetico como
+  // clinica dental sin darse cuenta.
+  const rawType = formData.get("businessType");
+  if (rawType !== "dental" && rawType !== "aesthetic") {
+    return { error: "Elige el tipo de negocio: clínica dental o centro estético." };
+  }
+  const businessType = rawType;
   const expiresInDaysRaw = String(formData.get("expiresInDays") ?? "").trim();
   const expiresInDays = expiresInDaysRaw ? Number(expiresInDaysRaw) : null;
 
@@ -109,6 +116,24 @@ export async function createInvite(
       await admin.auth.admin.deleteUser(created.user.id);
       logger.error({ event: "create_invite_row_failed", error: insertError.message });
       return { error: "No se pudo guardar el código de invitación." };
+    }
+
+    // Centro estetico: se asegura el tipo y se carga el catalogo completo de
+    // servicios esteticos desde el codigo (lib/agent/default-templates.ts),
+    // que es la fuente de verdad -- el trigger SQL solo deja un minimo.
+    if (businessType === "aesthetic") {
+      const { data: profile } = await admin
+        .from("profiles")
+        .select("organization_id")
+        .eq("id", created.user.id)
+        .single();
+      if (profile?.organization_id) {
+        await admin.from("organizations").update({ business_type: "aesthetic" }).eq("id", profile.organization_id);
+        await admin
+          .from("agent_configs")
+          .update({ services: DEFAULT_SERVICES_AESTHETIC as unknown as Json, updated_at: new Date().toISOString() })
+          .eq("organization_id", profile.organization_id);
+      }
     }
 
     revalidatePath("/admin/invites");

@@ -4,8 +4,43 @@ import { revalidatePath } from "next/cache";
 import { requireCurrentOrg } from "@/lib/auth/current-org";
 import { agentConfigFormSchema } from "@/lib/validations/agent-config";
 import type { Json } from "@/lib/database.types";
+import type { BusinessType } from "@/lib/types";
+import { defaultServicesFor } from "@/lib/agent/default-templates";
 
 export type SaveAgentConfigState = { error?: string; success?: boolean } | null;
+
+/**
+ * Cambia el sector del negocio (clinica dental / centro estetico) y,
+ * opcionalmente, sustituye los servicios por el catalogo por defecto de ese
+ * sector. El sector cambia las reglas del agente (ver build-system-prompt).
+ */
+export async function changeBusinessType(
+  type: BusinessType,
+  loadDefaultServices: boolean,
+): Promise<{ error?: string }> {
+  if (type !== "dental" && type !== "aesthetic") {
+    return { error: "Tipo de negocio no válido." };
+  }
+  const { supabase, organizationId } = await requireCurrentOrg();
+
+  const { error } = await supabase.from("organizations").update({ business_type: type }).eq("id", organizationId);
+  if (error) {
+    return { error: "No se pudo cambiar el tipo de negocio." };
+  }
+
+  if (loadDefaultServices) {
+    const { error: servicesError } = await supabase
+      .from("agent_configs")
+      .update({ services: defaultServicesFor(type) as unknown as Json, updated_at: new Date().toISOString() })
+      .eq("organization_id", organizationId);
+    if (servicesError) {
+      return { error: "Se cambió el tipo, pero no se pudieron cargar los servicios por defecto." };
+    }
+  }
+
+  revalidatePath("/personalizacion");
+  return {};
+}
 
 /**
  * Guarda la configuracion del agente. El formulario manda todo el estado

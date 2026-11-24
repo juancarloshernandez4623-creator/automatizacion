@@ -117,14 +117,14 @@ export function InviteManager({ initialInvites }: { initialInvites: InviteListIt
         </div>
 
         <fieldset className="flex flex-col gap-1.5">
-          <legend className="mb-1.5 text-xs font-medium text-neutral-600">Tipo de negocio</legend>
+          <legend className="mb-1.5 text-xs font-medium text-neutral-600">Tipo de negocio (obligatorio)</legend>
           <div className="flex flex-wrap gap-2">
             {(Object.keys(BUSINESS_TYPE_LABELS) as BusinessType[]).map((type) => (
               <label
                 key={type}
                 className="flex cursor-pointer items-center gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-700 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50"
               >
-                <input type="radio" name="businessType" value={type} defaultChecked={type === "dental"} id={`businessType-${type}`} />
+                <input type="radio" name="businessType" value={type} required id={`businessType-${type}`} />
                 {BUSINESS_TYPE_LABELS[type]}
               </label>
             ))}

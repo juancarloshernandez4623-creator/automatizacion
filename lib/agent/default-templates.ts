@@ -38,11 +38,27 @@ export const DEFAULT_SERVICES: Service[] = [
 ];
 
 /**
- * Servicios por defecto de un centro estetico. Los tratamientos medico-
- * esteticos (inyectables, peelings medicos) requieren valoracion medica
- * previa la primera vez; los esteticos no medicos se reservan directamente.
- * MANTENER EN SYNC con supabase/migrations/0018_business_type.sql.
+ * Servicios por defecto de una clinica o centro estetico (catalogo amplio:
+ * cada centro quita lo que no ofrece y ajusta duraciones).
+ *
+ * Criterio de reserva:
+ * - "after_assessment" (valoracion medica la primera vez): todo lo que
+ *   inyecta, perfora la piel, usa laser o aparatologia medica, o exige
+ *   revisar contraindicaciones -- lo decide y aplica un medico.
+ * - "direct": tratamientos esteticos sin componente medico (faciales,
+ *   cejas y pestanas, depilacion, masajes, corporales esteticos, unas).
+ *
+ * Fuente de verdad: /admin/invites aplica esta lista al crear un centro
+ * estetico (la del trigger SQL de la migracion 0018 es solo un minimo de
+ * respaldo).
  */
+const d = (name: string, duration_minutes: number, description: string): Service => ({
+  name, duration_minutes, description, booking: "direct",
+});
+const m = (name: string, duration_minutes: number, description: string): Service => ({
+  name, duration_minutes, description, booking: "after_assessment",
+});
+
 export const DEFAULT_SERVICES_AESTHETIC: Service[] = [
   {
     name: "primera consulta / valoración",
@@ -50,17 +66,74 @@ export const DEFAULT_SERVICES_AESTHETIC: Service[] = [
     description: "Consulta con el médico estético para valorar el tratamiento adecuado y descartar contraindicaciones",
     booking: "assessment",
   },
-  { name: "limpieza facial", duration_minutes: 60, description: "Higiene facial profunda", booking: "direct" },
-  { name: "depilación láser", duration_minutes: 30, description: "Sesión de depilación láser", booking: "direct" },
-  {
-    name: "tratamiento corporal",
-    duration_minutes: 60,
-    description: "Presoterapia, radiofrecuencia o tratamientos reductores",
-    booking: "direct",
-  },
-  { name: "toxina botulínica (bótox)", duration_minutes: 30, description: "Arrugas de expresión", booking: "after_assessment" },
-  { name: "ácido hialurónico (rellenos)", duration_minutes: 45, description: "Labios, surcos y pómulos", booking: "after_assessment" },
-  { name: "mesoterapia / peeling médico", duration_minutes: 45, description: "Rejuvenecimiento médico de la piel", booking: "after_assessment" },
+
+  // Medicina estética facial (valoración médica previa)
+  m("toxina botulínica (bótox)", 30, "Arrugas de expresión: frente, entrecejo y patas de gallo"),
+  m("ácido hialurónico – labios", 45, "Aumento, perfilado o hidratación de labios"),
+  m("ácido hialurónico – surcos, pómulos y mentón", 45, "Relleno de surcos nasogenianos, volumen de pómulos y mentón"),
+  m("rinomodelación", 45, "Corrección de la nariz sin cirugía con ácido hialurónico"),
+  m("tratamiento de ojeras", 45, "Relleno de la ojera con ácido hialurónico"),
+  m("hilos tensores", 60, "Efecto lifting sin cirugía"),
+  m("bioestimuladores de colágeno", 45, "Radiesse, Sculptra u otros para la flacidez"),
+  m("skinbooster / Profhilo", 45, "Hidratación profunda y calidad de la piel"),
+  m("mesoterapia facial", 45, "Vitaminas y ácido hialurónico para revitalizar la piel"),
+  m("plasma rico en plaquetas (PRP)", 60, "Rejuvenecimiento facial con plasma del propio paciente"),
+  m("peeling médico", 45, "Peeling químico medio o profundo para manchas, acné y arrugas"),
+  m("microneedling / dermapen", 60, "Microagujas para cicatrices, poros y textura de la piel"),
+  m("enzimas o lipolíticos para papada", 30, "Reducción de grasa localizada en papada"),
+  m("hiperhidrosis (sudoración excesiva)", 30, "Toxina botulínica en axilas, manos o pies"),
+
+  // Láser y luz médica (valoración médica previa)
+  m("láser para manchas (IPL)", 45, "Manchas solares, pigmentación y rojeces"),
+  m("láser CO2 / fraccionado", 60, "Rejuvenecimiento, cicatrices de acné y textura"),
+  m("eliminación de tatuajes con láser", 30, "Sesión de eliminación de tatuaje"),
+  m("tratamiento de varices / arañas vasculares", 30, "Escleroterapia o láser vascular"),
+
+  // Capilar (valoración médica previa)
+  m("mesoterapia capilar / PRP capilar", 45, "Tratamiento médico de la caída del cabello"),
+
+  // Medicina estética corporal (valoración médica previa)
+  m("criolipólisis", 60, "Eliminación de grasa localizada por frío"),
+  m("mesoterapia corporal", 45, "Celulitis y grasa localizada"),
+  m("carboxiterapia", 45, "Celulitis, flacidez y ojeras"),
+
+  // Estética facial (reserva directa)
+  d("limpieza facial profunda", 60, "Higiene facial completa con extracción"),
+  d("higiene facial express", 30, "Limpieza facial rápida"),
+  d("hidratación facial / Hydrafacial", 60, "Limpieza, exfoliación e hidratación profunda"),
+  d("tratamiento facial antiacné", 60, "Limpieza y tratamiento para pieles con acné"),
+  d("peeling químico superficial", 45, "Renovación suave de la piel"),
+  d("microdermoabrasión", 45, "Exfoliación mecánica de la piel"),
+  d("radiofrecuencia facial", 45, "Tensado y firmeza de la piel"),
+  d("tratamiento facial antiedad", 60, "Tratamiento de cabina reafirmante y antiarrugas"),
+
+  // Cejas y pestañas (reserva directa)
+  d("diseño y depilación de cejas", 30, "Diseño de cejas con cera o pinza"),
+  d("laminado de cejas", 45, "Alisado y fijación de las cejas"),
+  d("lifting de pestañas", 60, "Rizado y tinte de pestañas naturales"),
+  d("extensiones de pestañas", 90, "Primera puesta de extensiones"),
+  d("relleno de extensiones de pestañas", 60, "Mantenimiento de extensiones"),
+
+  // Depilación (reserva directa)
+  d("depilación láser – zona pequeña", 20, "Axilas, labio superior, ingles... La primera sesión incluye prueba"),
+  d("depilación láser – zona mediana", 30, "Medias piernas, brazos, ingle completa..."),
+  d("depilación láser – zona grande", 45, "Piernas completas, espalda..."),
+  d("depilación con cera", 30, "Depilación tradicional con cera"),
+
+  // Corporal estético y masajes (reserva directa)
+  d("presoterapia", 45, "Drenaje y piernas cansadas"),
+  d("radiofrecuencia corporal", 45, "Flacidez y celulitis"),
+  d("cavitación", 45, "Reducción de grasa localizada con ultrasonidos"),
+  d("maderoterapia", 60, "Masaje reductor y anticelulítico con instrumentos de madera"),
+  d("tratamiento reductor / anticelulítico", 60, "Tratamiento corporal de cabina"),
+  d("drenaje linfático manual", 60, "Retención de líquidos y piernas cansadas"),
+  d("masaje relajante", 60, "Masaje corporal relajante"),
+  d("masaje descontracturante", 60, "Masaje para tensión y contracturas"),
+
+  // Manos y pies (reserva directa)
+  d("manicura", 45, "Manicura tradicional"),
+  d("manicura semipermanente", 60, "Esmaltado semipermanente"),
+  d("pedicura", 60, "Pedicura estética"),
 ];
 
 export function defaultServicesFor(type: BusinessType): Service[] {
