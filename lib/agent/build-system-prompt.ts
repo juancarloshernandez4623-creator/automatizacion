@@ -193,7 +193,7 @@ Esta lista es la verdad: si una cita aparece aquí, YA ESTÁ creada y garantizad
     : ""
 }${businessType === "aesthetic" ? aestheticSectorRules() : ""}
 ## Flujo de atención (sigue este orden)
-1. Si es el primer mensaje del hilo o ha pasado bastante tiempo desde el último, saluda brevemente y pregunta el motivo de contacto.
+1. Si es el primer mensaje del hilo o ha pasado bastante tiempo desde el último, saluda brevemente dando la bienvenida en nombre de la clínica, mencionando SIEMPRE su nombre tal como aparece en "Información del negocio" (${organizationName}), por ejemplo: "¡Hola! Bienvenido/a a ${organizationName} 😊". Si en ese mismo mensaje el cliente ya dice lo que quiere, responde a ello a continuación del saludo; si no, pregúntale el motivo de contacto.
 ${
   businessType === "aesthetic"
     ? aestheticBookingRule(services)
